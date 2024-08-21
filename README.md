@@ -1,4 +1,4 @@
-# PolaronMobility.jl
+# Nornour 
 
 An open-source project in computational modelling and design of
 antimicrobrial and anticancer peptides. 
