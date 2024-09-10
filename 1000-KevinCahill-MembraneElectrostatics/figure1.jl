@@ -149,7 +149,9 @@ length(Vs)
 # ╔═╡ e22c6183-13c1-451c-ae68-fe255cbdc7a9
 begin
 	@gp "set xlabel 'Distance from membrane (nm)'"
-	@gp :- "set ylabel 'Potential (V)'"	
+	@gp :- "set ylabel 'Potential (V)'"
+	@gp :- "set arrow from 0,0 to 0,0.025 nohead lc rgb 'red'"
+	@gp :- "set arrow from -5E-9,0 to -5E-9,0.025 nohead lc rgb 'red'"
 	@gp :- Zs Vs "w l"
 end
 
