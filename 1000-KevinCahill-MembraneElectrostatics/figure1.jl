@@ -50,49 +50,107 @@ p′=(ϵ_c - ϵ_l)/(ϵ_c + ϵ_l)
 # ╔═╡ be91df5f-75fa-4096-a89f-995fd7c836d2
 q/(4π*ϵ_0)
 
-# ╔═╡ fe38d119-222d-4ac3-82c7-25a565d3db94
+# ╔═╡ 1cea7fcb-e445-45af-a0b8-18d67f009850
+
+
+# ╔═╡ 589cf1f7-56a6-4dd3-a2c2-1bb16a1edbe3
+# Eqn (10)
+ϵ_wl=(ϵ_w + ϵ_l)/2
+
+# ╔═╡ 42f3b835-c8bc-499d-93ce-c23e01be3748
+ϵ_cl = (ϵ_c + ϵ_l)/2
+
+# ╔═╡ 8286961c-6c21-4bc6-97aa-e584da2a81ed
+
+
+# ╔═╡ da083ad4-c569-4e9e-847a-3f9c01d35906
 
 
 # ╔═╡ a1ce501e-2822-42ce-9947-937fd7400bd1
 t=5nm
 
+# ╔═╡ 32037f8f-1bad-459a-afdd-312615a1eef5
+Zs=collect(-(t+5nm):t/100:5nm)
+
 # ╔═╡ 5630d8fe-d7ef-4b97-8bca-25cacd287fd2
-h=2nm
+h=1nm
 
 # ╔═╡ a3e0eb0f-0bf2-4e6c-9718-436c5e2c50e0
-summand9(n,z,ρ)=p*p′^(n-1)/(√(ρ^2 + (z+2n*t+h)^2))
+summand9(n,z,ρ)=p*p′^(n-1)/(√(ρ^2 + (z + 2n*t + h)^2))
 
 # ╔═╡ ddf44a07-63d8-40b2-bc60-362eb87da3d4
 # Figure 1 - Phospholipid bilayer, blue curve - charge in the water at (0,1)
 
-# Eqn (9)
-function V_ww(z; ρ=sqrt(1nm^2+1nm^2)) 
-	q/(4π*ϵ_0) * 
+# Eqn (9) - potential in water
+function V_ww(z; ρ=sqrt(0.707nm^2+0.707nm^2)) 
+	q/(4π*ϵ_w) * 
 	(
-		1/sqrt(ρ^2+(z-h)^2) 
-		+ p/(√(ρ^2+(z+h)^2)) 
-		- p′*(1-p^2) * sum([ summand9(n,z,ρ) for n in 1:10 ] ) 
+		  1/√(ρ^2+(z-h)^2) 
+		+ p/√(ρ^2+(z+h)^2)
+		- p′*(1-p^2) * sum([ summand9(n,z,ρ) for n in 1:1000 ] ) 
 	)
 
 end
 
-# ╔═╡ b2327bec-c7fc-435b-b7a9-e374fc093823
-range=0:0.01nm:5nm # in units of nm ? Where did the metres drop out? in h?
+# ╔═╡ 6aa0eb1b-3831-478c-881e-dbdbb441938c
+# Eqn (10)
+summand10(n,z,ρ) = (p*p′)^n * 
+( 
+	1/√(ρ^2 + (z - 2n*t - h)^2)  
+	- p′/√(ρ^2 + (z + 2*(n+1)*t + h)^2) )
 
-# ╔═╡ 1173fd46-c058-459a-82ce-98fe37e05413
-V=[V_ww(z) for z in range]
+# ╔═╡ 16c0c851-419e-4fd7-a696-6f9d8bed48fc
+# Eqn (10) - lipid bilayer potential
+function V_wl(z; ρ=sqrt(0.707nm^2+0.707nm^2))
+	q/(4π*ϵ_wl) *
+	sum([summand10(n,z,ρ) for n in 0:1000])
+end
+
+# ╔═╡ ee8a56ff-5626-4d1f-a323-7fd55b417b1e
+summand11(n,z,ρ) = (p*p′)^n / √(ρ^2 + (z - 2n*t - h)^2)
+
+# ╔═╡ bd2841c7-4cc5-43ce-9c0b-e6ca9080594e
+# Eqn (11) - cytosol potential
+function V_wc(z;ρ=sqrt(0.707nm^2+0.707nm^2))
+	q*ϵ_l/(4π*ϵ_wl*ϵ_cl) *
+	sum([summand11(n,z,ρ) for n in 0:1000])
+end
+
+# ╔═╡ e1edefc5-73cd-4bb6-8fea-d76691946c79
+function V(z)
+	if z>=0 # in water z>=0
+		V=V_ww(z)
+	elseif z>-t # in lipid -t<z<0
+		V=V_wl(z)
+	else # in cytosol, z<-t
+		V=V_wc(z)
+	end
+	V
+end
+
+# ╔═╡ 07bc6449-5cb5-44f7-add9-dd13573776c1
+Vs=[V(z) for z in Zs ] 
+
+# ╔═╡ 4e9fd964-70e3-4c1b-88e3-c430db7046b8
+
 
 # ╔═╡ c90f5dda-fadf-4d9a-9719-7156f8a40bd4
-maximum(V)
+maximum(Vs)
 
 # ╔═╡ 7d4b997a-2845-41b4-9834-62a7ae5c2062
-minimum(V)
+minimum(Vs) 
+
+# ╔═╡ c5ccccb3-66c6-4d3e-82c6-4fa7e73c0965
+length(Zs)
+
+# ╔═╡ e59df517-6aad-45ef-baad-baf4eae5df20
+length(Vs)
 
 # ╔═╡ e22c6183-13c1-451c-ae68-fe255cbdc7a9
 begin
 	@gp "set xlabel 'Distance from membrane (nm)'"
 	@gp :- "set ylabel 'Potential (V)'"	
-	@gp :- range V "w l"
+	@gp :- Zs Vs "w l"
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -403,16 +461,28 @@ version = "5.11.0+0"
 # ╠═c9b29a75-daa0-4c06-966a-4e59690abe41
 # ╠═31a8eaba-0feb-4692-84ba-f75561db3729
 # ╠═12966c74-8de9-43cc-8cf9-cb816b1bfd23
-# ╠═ddf44a07-63d8-40b2-bc60-362eb87da3d4
 # ╠═be91df5f-75fa-4096-a89f-995fd7c836d2
-# ╠═fe38d119-222d-4ac3-82c7-25a565d3db94
+# ╠═ddf44a07-63d8-40b2-bc60-362eb87da3d4
+# ╠═1cea7fcb-e445-45af-a0b8-18d67f009850
 # ╠═a3e0eb0f-0bf2-4e6c-9718-436c5e2c50e0
+# ╠═589cf1f7-56a6-4dd3-a2c2-1bb16a1edbe3
+# ╠═16c0c851-419e-4fd7-a696-6f9d8bed48fc
+# ╠═6aa0eb1b-3831-478c-881e-dbdbb441938c
+# ╠═42f3b835-c8bc-499d-93ce-c23e01be3748
+# ╠═bd2841c7-4cc5-43ce-9c0b-e6ca9080594e
+# ╠═ee8a56ff-5626-4d1f-a323-7fd55b417b1e
+# ╠═32037f8f-1bad-459a-afdd-312615a1eef5
+# ╠═8286961c-6c21-4bc6-97aa-e584da2a81ed
+# ╠═07bc6449-5cb5-44f7-add9-dd13573776c1
+# ╠═da083ad4-c569-4e9e-847a-3f9c01d35906
 # ╠═a1ce501e-2822-42ce-9947-937fd7400bd1
 # ╠═5630d8fe-d7ef-4b97-8bca-25cacd287fd2
-# ╠═b2327bec-c7fc-435b-b7a9-e374fc093823
-# ╠═1173fd46-c058-459a-82ce-98fe37e05413
+# ╠═e1edefc5-73cd-4bb6-8fea-d76691946c79
+# ╠═4e9fd964-70e3-4c1b-88e3-c430db7046b8
 # ╠═c90f5dda-fadf-4d9a-9719-7156f8a40bd4
 # ╠═7d4b997a-2845-41b4-9834-62a7ae5c2062
+# ╠═c5ccccb3-66c6-4d3e-82c6-4fa7e73c0965
+# ╠═e59df517-6aad-45ef-baad-baf4eae5df20
 # ╠═e22c6183-13c1-451c-ae68-fe255cbdc7a9
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
