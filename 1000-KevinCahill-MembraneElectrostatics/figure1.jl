@@ -34,26 +34,30 @@ const ϵ_l = 2 * ϵ_0
 # "Cytosol absolutely dielectric"
 const ϵ_c = 80 * ϵ_0
 
+# ╔═╡ 630dd62a-c312-461f-a97b-b7b2b04c15a3
+# nm, or at least 1E-9 scaling
+const nm = 1E-9
+
 # ╔═╡ c9b29a75-daa0-4c06-966a-4e59690abe41
 p=(ϵ_w - ϵ_l)/(ϵ_w + ϵ_l)
 
 # ╔═╡ 31a8eaba-0feb-4692-84ba-f75561db3729
 p′=(ϵ_c - ϵ_l)/(ϵ_c + ϵ_l)
 
-# ╔═╡ bd89442c-cfb2-440f-af72-474a7cd75fa5
-
-
 # ╔═╡ 12966c74-8de9-43cc-8cf9-cb816b1bfd23
 ϵ_w
 
-# ╔═╡ 93598293-0486-4f2a-ba4f-406dcb40e473
+# ╔═╡ be91df5f-75fa-4096-a89f-995fd7c836d2
+q/(4π*ϵ_0)
+
+# ╔═╡ fe38d119-222d-4ac3-82c7-25a565d3db94
 
 
 # ╔═╡ a1ce501e-2822-42ce-9947-937fd7400bd1
-t=5
+t=5nm
 
 # ╔═╡ 5630d8fe-d7ef-4b97-8bca-25cacd287fd2
-h=2
+h=2nm
 
 # ╔═╡ a3e0eb0f-0bf2-4e6c-9718-436c5e2c50e0
 summand9(n,z,ρ)=p*p′^(n-1)/(√(ρ^2 + (z+2n*t+h)^2))
@@ -62,7 +66,7 @@ summand9(n,z,ρ)=p*p′^(n-1)/(√(ρ^2 + (z+2n*t+h)^2))
 # Figure 1 - Phospholipid bilayer, blue curve - charge in the water at (0,1)
 
 # Eqn (9)
-function V_ww(z; ρ=sqrt(1^2+1^2)) 
+function V_ww(z; ρ=sqrt(1nm^2+1nm^2)) 
 	q/(4π*ϵ_0) * 
 	(
 		1/sqrt(ρ^2+(z-h)^2) 
@@ -73,16 +77,23 @@ function V_ww(z; ρ=sqrt(1^2+1^2))
 end
 
 # ╔═╡ b2327bec-c7fc-435b-b7a9-e374fc093823
-range=0:0.01:5 # in units of nm ? Where did the metres drop out? in h?
+range=0:0.01nm:5nm # in units of nm ? Where did the metres drop out? in h?
 
 # ╔═╡ 1173fd46-c058-459a-82ce-98fe37e05413
 V=[V_ww(z) for z in range]
 
 # ╔═╡ c90f5dda-fadf-4d9a-9719-7156f8a40bd4
+maximum(V)
 
+# ╔═╡ 7d4b997a-2845-41b4-9834-62a7ae5c2062
+minimum(V)
 
 # ╔═╡ e22c6183-13c1-451c-ae68-fe255cbdc7a9
-@gp range V "w l"
+begin
+	@gp "set xlabel 'Distance from membrane (nm)'"
+	@gp :- "set ylabel 'Potential (V)'"	
+	@gp :- range V "w l"
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -388,18 +399,20 @@ version = "5.11.0+0"
 # ╠═c7de94fd-8792-4c7b-987f-1dedf9aa3fa8
 # ╠═1a32993f-4aa1-4b96-90ec-e6aac423a2bb
 # ╠═f4da6d89-4a66-47b9-a05b-95b44ac45eb2
+# ╠═630dd62a-c312-461f-a97b-b7b2b04c15a3
 # ╠═c9b29a75-daa0-4c06-966a-4e59690abe41
 # ╠═31a8eaba-0feb-4692-84ba-f75561db3729
-# ╠═bd89442c-cfb2-440f-af72-474a7cd75fa5
 # ╠═12966c74-8de9-43cc-8cf9-cb816b1bfd23
-# ╠═93598293-0486-4f2a-ba4f-406dcb40e473
 # ╠═ddf44a07-63d8-40b2-bc60-362eb87da3d4
+# ╠═be91df5f-75fa-4096-a89f-995fd7c836d2
+# ╠═fe38d119-222d-4ac3-82c7-25a565d3db94
 # ╠═a3e0eb0f-0bf2-4e6c-9718-436c5e2c50e0
 # ╠═a1ce501e-2822-42ce-9947-937fd7400bd1
 # ╠═5630d8fe-d7ef-4b97-8bca-25cacd287fd2
 # ╠═b2327bec-c7fc-435b-b7a9-e374fc093823
 # ╠═1173fd46-c058-459a-82ce-98fe37e05413
 # ╠═c90f5dda-fadf-4d9a-9719-7156f8a40bd4
+# ╠═7d4b997a-2845-41b4-9834-62a7ae5c2062
 # ╠═e22c6183-13c1-451c-ae68-fe255cbdc7a9
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
