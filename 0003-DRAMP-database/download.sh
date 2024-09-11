@@ -11,3 +11,10 @@
 
 cat Antibacterial_amps.txt | grep "^DRAMP" | awk '{print $2}' > Antibacterial_amps_sequences.txt
 
+# Nb: Data still quite unclean! '24..spacerO()hxwlUgimvfJyqtZ' characters all
+# turning up
+
+# OK, this is now ready to use with a LSTM etc.; such as this super slick
+# Javascript interface:
+#    https://cs.stanford.edu/people/karpathy/recurrentjs/
+
