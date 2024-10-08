@@ -1,0 +1,40 @@
+              :-) GROMACS - gmx mdrun, 2024.1-EasyBuild_4.9.1 (-:
+
+Executable:   /gpfs/easybuild/prod/software/GROMACS/2024.1-foss-2023b/bin/gmx
+Data prefix:  /gpfs/easybuild/prod/software/GROMACS/2024.1-foss-2023b
+Working dir:  /gpfs/home/jmf02/Nournor/DOPC
+Command line:
+  gmx mdrun -s DOPC_CHOL_production.tpr
+
+Reading file DOPC_CHOL_production.tpr, VERSION 2024.3-conda_forge (single precision)
+Can not increase nstlist because verlet-buffer-tolerance is not set or used
+Update groups can not be used for this system because an incompatible virtual site type is used
+
+Using 64 MPI threads
+Using 1 OpenMP thread per tMPI thread
+
+starting mdrun 'DOPC_CHOL'
+10000000 steps, 200000.0 ps.
+
+Writing final coordinates.
+
+
+Dynamic load balancing report:
+ DLB got disabled because it was unsuitable to use.
+ Average load imbalance: 3.9%.
+ The balanceable part of the MD step is 54%, load imbalance is computed from this.
+ Part of the total run time spent waiting due to load imbalance: 2.1%.
+
+
+NOTE: 9 % of the run time was spent in domain decomposition,
+      13 % of the run time was spent in pair search,
+      you might want to increase nstlist (this has no effect on accuracy)
+
+               Core t (s)   Wall t (s)        (%)
+       Time:   219203.435     3425.054     6400.0
+                         57:05
+                 (ns/day)    (hour/ns)
+Performance:     5045.176        0.005
+
+GROMACS reminds you: "There's no way you can rely on an experiment" (Gerrit Groenhof)
+

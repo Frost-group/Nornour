@@ -1,0 +1,20 @@
+
+Jarv's node statistics: 
+Number of CPUs: 1
+CPU model: Model name:          Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz
+Total memory reported to PBS: 
+Available memory (/proc/meminfo): 513178900
+Node name: hx1-c11-8-3
+Linux kernel version: 4.18.0-372.32.1.el8_6.x86_64
+Distribution: Red Hat Enterprise Linux 8.6 (Ootpa)
+Uptime: up 1 year, 4 weeks, 6 minutes
+
+
+====================================
+CPU Time used: 48:46:13
+CPU Percent: 6280%
+Memory usage: 153064kb
+Approx Power usage: 0.5852
+Walltime usage: 00:47:41
+
+====================================

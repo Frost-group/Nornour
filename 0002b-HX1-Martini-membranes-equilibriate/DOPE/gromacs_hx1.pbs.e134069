@@ -1,0 +1,38 @@
+              :-) GROMACS - gmx mdrun, 2024.1-EasyBuild_4.9.1 (-:
+
+Executable:   /gpfs/easybuild/prod/software/GROMACS/2024.1-foss-2023b/bin/gmx
+Data prefix:  /gpfs/easybuild/prod/software/GROMACS/2024.1-foss-2023b
+Working dir:  /gpfs/home/jmf02/Nournor/DOPE-prod
+Command line:
+  gmx mdrun -s DOPE_DOPG_production.tpr
+
+Reading file DOPE_DOPG_production.tpr, VERSION 2024.3-conda_forge (single precision)
+Can not increase nstlist because verlet-buffer-tolerance is not set or used
+Using 64 MPI threads
+Using 1 OpenMP thread per tMPI thread
+
+starting mdrun 'DOPE_DOPG'
+10000000 steps, 200000.0 ps.
+
+Writing final coordinates.
+
+
+Dynamic load balancing report:
+ DLB got disabled because it was unsuitable to use.
+ Average load imbalance: 3.5%.
+ The balanceable part of the MD step is 60%, load imbalance is computed from this.
+ Part of the total run time spent waiting due to load imbalance: 2.1%.
+
+
+NOTE: 6 % of the run time was spent in domain decomposition,
+      14 % of the run time was spent in pair search,
+      you might want to increase nstlist (this has no effect on accuracy)
+
+               Core t (s)   Wall t (s)        (%)
+       Time:   183087.295     2860.739     6400.0
+                         47:40
+                 (ns/day)    (hour/ns)
+Performance:     6040.397        0.004
+
+GROMACS reminds you: "Considering the current sad state of our computer programs, software development is clearly still a black art, and cannot yet be called an engineering discipline." (William Jefferson Clinton)
+
