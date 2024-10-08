@@ -1,0 +1,67 @@
+;
+; STANDARD MD INPUT OPTIONS FOR MARTINI 3 ALPHA
+;
+define                   = -DPOS_Z_RES
+integrator               = md
+dt                       = 0.02
+nsteps                   = 10000000  ; 200 ns
+
+nstxout                  = 0
+nstvout                  = 0
+nstfout                  = 0
+nstlog                   = 25000 ; 0.5 ns
+nstenergy                = 25000 ; 0.5 ns
+nstxout-compressed       = 50000 ; 1 ns
+compressed-x-precision   = 100
+compressed-x-grps        =
+energygrps               = System
+
+; NEIGHBOURLIST and MARTINI
+; See Kim et al. 2023 (10.26434/chemrxiv-2023-zbj6j) and de Jong et al. 2016 (10.1016/j.cpc.2015.09.014)
+cutoff-scheme            = Verlet
+nstlist                  = 20
+nsttcouple               = 20
+nstpcouple               = 20
+rlist                    = 1.35
+verlet-buffer-tolerance  = -1
+ns_type                  = grid
+pbc                      = xyz
+
+coulombtype              = reaction-field
+rcoulomb                 = 1.1
+epsilon_r                = 15
+epsilon_rf               = 0
+vdw_type                 = cutoff
+vdw-modifier             = Potential-shift-verlet
+rvdw                     = 1.1
+
+; Temperature coupling
+tcoupl                   = v-rescale
+tc-grps                  = Solvent Membrane
+tau_t                    = 1.0 1.0
+ref_t                    = 310 310
+
+; Pressure coupling
+; Pressure coupling     
+Pcoupl                   = c-rescale
+Pcoupltype               = semiisotropic
+tau_p                    = 4.0 
+ref_p                    = 1.0 1.0
+compressibility          = 3e-4 3e-4 
+
+; Center of mass removal
+comm-mode                = Linear
+nstcomm                  = 100
+comm-grps                = Solvent Membrane
+
+refcoord_scaling         = all
+
+gen_vel                  = no
+gen_temp                 = 310
+gen_seed                 = 476629
+
+constraints              = none
+constraint_algorithm     = Lincs
+lincs_order              = 12
+lincs_warnangle          = 90
+lincs_iter               = 2
