@@ -1,4 +1,4 @@
-# Install Nornour conda environment 
+# Install Nornour conda environment
 
 . ~/conda_init.sh
 
@@ -9,7 +9,7 @@ conda activate Nornour
 
 # (optional) Install MACE's dependencies from Conda as well
 conda config --add channels conda-forge
-conda config --set channel_priority strict
+
 
 conda install pytorch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 pytorch-cuda=11.8 -c pytorch -c nvidia
 conda install numpy scipy matplotlib ase opt_einsum prettytable pandas e3nn
@@ -27,7 +27,7 @@ pip install netCDF4 # for converting trajectories
 conda install conda-forge::gromacs
 
 # Martini CG membrane builder
-pip install insane
+pip install insanei
 
 # CGSB/COBY - Python mebrane builder (Coarse-grained System Builder)
 pip install COBY
