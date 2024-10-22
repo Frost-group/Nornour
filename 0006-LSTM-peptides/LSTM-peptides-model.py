@@ -5,50 +5,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import unidecode
+from torch.utils.tensorboard import SummaryWriter
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
-filepath = input('Filename: ')
-file = unidecode.unidecode(open(filepath)).read()
+filepath =  '../0003b-RW-Lexicon/RW_lexicon.dat'
+file = unidecode.unidecode(open('../0003b-RW-Lexicon/RW_lexicon.dat').read())
 
 vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
 len_vocab = len(vocab)
 
 
-def _onehotencode(seq, vocab):
-
-    to_one_hot = dict()
-    for i, a in enumerate(vocab):
-        v = torch.zeros(len(vocab))
-        v[i] = 1
-        to_one_hot[a] = v
-
-    result = []
-    for l in seq:
-        result.append(to_one_hot[l])
-    result = np.array(result)
-    return torch.Tensor(result), to_one_hot, vocab
-
-def padding_len(filepath):
-    # Read the file to find the longest line
-    with open(filepath, 'r') as file:
-        lines = file.readlines()  # Read all lines
-        len_longest = max(len(line.strip()) for line in lines)
-
-    return len_longest
-
-def padding(filepath, max_len):
-     # Pad lines to make them all the same length
-    with open(filepath, 'w') as file:
-        lines = file.readlines()
-        for line in lines:
-            padded_line = line.strip().ljust(max_len, '_')  # Pad each line with '_'
-            file.write(padded_line + '\n')  # Write the padded line back to the file
-
-
 class LSTMpeptides(nn.Module):
-
     def __init__(self, input_d, hidden_d ,len_vocab=22, layers=1):
         super(LSTMpeptides, self).__init__()
         self.input_d = input_d
@@ -75,14 +44,15 @@ class LSTMpeptides(nn.Module):
 
 #hyperparameters
 
-batch_size = 64
+batch_size = 1
 input_len = 'nbr lines in file'
-seq_len = padding(filepath)
+seq_len = 12
 hidden_size = 128
-n_epochs = 20
+n_epochs = 5000
 num_layers = 2
 neurons= 64
 lr = 0.001
+chunk_len = 250
 
 model = LSTMpeptides(input_d=input_len, hidden_d=hidden_size, len_vocab=22, batch=batch_size, layers=num_layers, neurons=neurons, lr=lr)
 
@@ -91,17 +61,16 @@ loss_fn = nn.CrossEntropyLoss(reduction="sum")
 
 
 class Generator():
-    def __init__(self, filepath, hidden_d, layers,  num_epochs, batch, chunck_len, lr=1e-3):
-        self.filepath = filepath
+    def __init__(self, hidden_d, layers,  num_epochs, batch, chunck_len, lr=1e-3):
         self.chunk_len = chunck_len
         self.num_epoch = num_epochs
         self.batch = batch
-        self.print_every = 5
+        self.print_every = 50
         self.hidden_d = hidden_d
         self.layers = layers
         self.lr = lr
 
-    def AA_tensor(self, string):
+    def aa_tensor(self, string):
         tensor = torch.zeros(len(string)).long()
         for c in range(len(string)):
             tensor[c] = vocab.index(string[c])
@@ -109,7 +78,72 @@ class Generator():
         return tensor
 
     def get_random_batch(self):
+
         start_idx = random.randint(0, len(file) - self.chunk_len)
-        end_idx = start_idx
+        end_idx = start_idx + self.chunk_len + 1
+        text_str = file[start_idx:end_idx]
+        text_input = torch.zeros(self.batch, self.chunk_len)
+        text_target = torch.zeros(self.batch, self.chunk_len)
+
+        for i in range(self.batch):
+            text_input[i, :] = self.aa_tensor(text_str[:-1])
+            text_target[i, :] = self.aa_tensor(text_str[1:])
+
+        return text_input.long(), text_target.long()
+
+    def generate(self, initial_str = 'A', predict_len=100, temp=1):
+        hidden, cell = self.lstm.init_hidden(batch=self.batch)
+        initial_input = self.aa_tensor(initial_str)
+        predicted = initial_str
+
+        for p in range(len(initial_str) - 1):
+            _, (hidden, cell) = self.lstm(initial_input[p].view(1).to(device), hidden, cell)
+
+        last_aa = initial_input[-1]
+
+        for p in range(predict_len):
+            output, (hidden, cell) = self.lstm(initial_input[p].view(1).to(device), hidden, cell)
+            output_dist = output.data.view(-1).div(temp).exp()
+            top_aa = torch.multinomial(output_dist, 1)[0]
+            predicted_aa = vocab[top_aa]
+            predicted += predicted_aa
+            last_aa = self.aa_tensor(predicted_aa)
+
+        return predicted
+
+
+    def train(self):
+        self.lstm = LSTMpeptides(len_vocab, self.hidden_d, len_vocab, self.layers).to(device)
+
+        optimizer = torch.optim.Adam(self.lstm.parameters(), lr=self.lr)
+        criterion = nn.CrossEntropyLoss()
+        writer = SummaryWriter(f'runs/names0')
+
+        print('===> starting training')
+
+        for epoch in range(1, self.num_epoch + 1 ):
+            int, target =
+            hidden, cell = self.lstm.init_hidden(batch=self.batch)
+
+            self.lstm.zero_grad()
+            loss = 0
+            inp = inp.to(device)
+            target = target.to(device)
+
+            for c in range(self.chunk_len):
+                output, (hidden, cell) = self.lstm(inp[:, c], hidden, cell)
+                loss += criterion(output, target[:, c])
+
+            loss.backward()
+            optimizer.step()
+            loss = loss.item() / self.chunk_len
+
+            if epoch % self.print_every == 0:
+                print(f'Loss: {loss}')
+
+            writer.add_scalar('Training loss', loss, global_step=epoch)
+
+
+
 
 
