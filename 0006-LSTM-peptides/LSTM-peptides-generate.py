@@ -34,3 +34,6 @@ def padding(filepath, max_len):
         for line in lines:
             padded_line = line.strip().ljust(max_len, '_')  # Pad each line with '_'
             file.write(padded_line + '\n')  # Write the padded line back to the file
+
+vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
+len_vocab = len(vocab)
