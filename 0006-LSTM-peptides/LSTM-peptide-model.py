@@ -19,19 +19,27 @@ class LSTMArgs:
 
 
 def open_file(filepath):
-    with open(filepath, 'r') as doc:
-        peptides = doc.readlines()
-        long_pep = max(len(pep.strip()) for pep in peptides)
+    try:
+        with open(filepath, 'r') as doc:
+            peptides = doc.readlines()
 
-    return peptides, long_pep
+        peptides = [pep.strip() for pep in peptides if pep.strip()]
+
+        long_pep = max(len(pep) for pep in peptides)
+
+        return peptides, long_pep
+
+    except FileNotFoundError:
+        print(f"File not found: {filepath}")
+        return None, None
 
 
 def padding(peptides, long_pep):
     for i, pep in enumerate(peptides):
         pad_length = long_pep - len(pep)
 
-    if pad_length > 0:
-        peptides[i] = pep.strip() + '_' * pad_length
+        if pad_length > 0:
+            peptides[i] = pep.strip() + '_' * pad_length
 
     return peptides
 
@@ -42,6 +50,10 @@ def split_data(peptides):
 
     train_data = peptides[:train_tresh]
     test_data = peptides[train_tresh:]
+
+    print(f"Total peptides: {len_pep}")
+    print(f"Training set size: {len(train_data)}")
+    print(f"Test set size: {len(test_data)}")
 
     return train_data, test_data
 
@@ -68,13 +80,13 @@ def to_amino(tensor, vocab):
 def create_batches(tensor, batch_size):
     data_size = len(tensor)
 
-    indices = list(range[data_size])
+    indices = list(range(data_size))
     random.shuffle(indices)
 
     for start in range(0, data_size, batch_size):
         end = min(start + batch_size, data_size)
         batch_indices = indices[start: end]
-        batch = tensor[batch_indices]
+        batch = torch.Tensor(batch_indices)
 
     return batch
 
@@ -116,7 +128,7 @@ class LSTMPeptides(nn.Module):
 
 
 
-def train(peptides, model, args):
+def train(peptides, model, seq_len,  args):
     model.train()
 
     vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W',
@@ -125,17 +137,18 @@ def train(peptides, model, args):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
-    inp_peptides = to_tensor(peptides, vocab)
-    seq_len = len(peptides)
+    inp_peptides, _ = to_tensor(peptides, vocab)
+    print(inp_peptides, inp_peptides.size())
 
     batch_size = args.batch_size
 
-    print('Starting Training \n -----------------------------')
+    print('\n-------Starting Training------- \n_________________________________')
 
     for epoch in range(args.num_epochs):
         state_h, state_c = model.init_state(seq_len)
 
         for batch in create_batches(inp_peptides, batch_size):
+            print(batch, batch.size())
             optimizer.zero_grad()
 
             x = batch[:, :-1].to(device)
@@ -201,11 +214,11 @@ args = LSTMArgs()
 dataset = '/Users/igorgonteri/Documents/GitHub/Nornour/0003c-APD-Database/antimicrobial_peptides_database.txt'
 peptides, long_pep = open_file(dataset)
 pep_padded = padding(peptides, long_pep)
-train_data, test_data = split_data(dataset)
+train_data, test_data = split_data(pep_padded)
 
 model = LSTMPeptides(long_pep, args.hidden_size, args.output_size, args.batch_size, args.layers)
 
-train(train_data, model, args)
+train(train_data, model, long_pep, args)
 test(test_data, model, long_pep, args.batch_size)
 
 
