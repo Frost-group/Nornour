@@ -63,8 +63,11 @@ def to_tensor(peptides, vocab):
     result = []
 
     for pep in peptides:
-        # Replace invalid characters with a default (e.g., index of '_')
-        result.append([to_index.get(aa, to_index['_']) for aa in pep.strip()])
+
+        indices = [to_index.get(aa, to_index['_']) for aa in pep.strip()]
+
+        indices = [min(i, len(vocab) - 1) for i in indices]
+        result.append(indices)
 
     return torch.tensor(result), to_index
 
@@ -81,12 +84,15 @@ def create_batches(tensor, batch_size):
     data_size = len(tensor)
 
     indices = list(range(data_size))
+
     random.shuffle(indices)
+
+    batch = []
 
     for start in range(0, data_size, batch_size):
         end = min(start + batch_size, data_size)
         batch_indices = indices[start: end]
-        batch = torch.Tensor(batch_indices)
+        batch.append(tensor[batch_indices, :])
 
     return batch
 
@@ -103,11 +109,11 @@ class LSTMPeptides(nn.Module):
         self.layers = layers
 
         self.vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C',
-                      'U', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V']
+                      'U', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
         self.len_vocab = len(self.vocab)
 
         self.embedding_dim = 128
-        self.embedding = nn.Embedding(num_embeddings=self.len_vocab, embedding_dim=self.embedding_dim)
+        self.embedding = nn.Embedding(num_embeddings=self.len_vocab, embedding_dim=self.embedding_dim, padding_idx=21)
 
         self.lstm = nn.LSTM(self.input_size, self.hidden_size, self.layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, output_size)
@@ -138,7 +144,7 @@ def train(peptides, model, seq_len,  args):
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
     inp_peptides, _ = to_tensor(peptides, vocab)
-    print(inp_peptides, inp_peptides.size())
+    print(f"Max index: {inp_peptides.max().item()}, Vocab size: {len(vocab)}")
 
     batch_size = args.batch_size
 
@@ -148,11 +154,15 @@ def train(peptides, model, seq_len,  args):
         state_h, state_c = model.init_state(seq_len)
 
         for batch in create_batches(inp_peptides, batch_size):
-            print(batch, batch.size())
+
+            print(batch.size())
+
             optimizer.zero_grad()
 
             x = batch[:, :-1].to(device)
+            print(x, x.size())
             y = batch[:, 1:].to(device)
+            print(y, y.size())
 
             y_pred, (state_h, state_c) = model(x, (state_h, state_c))
             loss = criterion(y_pred.transpose(1, 2), y)
