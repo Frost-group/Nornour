@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
+
 import random
 import math
 import matplotlib.pyplot as plt
@@ -12,10 +14,10 @@ print(device)
 class LSTMArgs:
     def __init__(self):
         self.output_size = 22
-        self.num_epochs = 2
-        self.batch_size = 128
-        self.learning_rate = 0.001
-        self.hidden_size = 128
+        self.num_epochs = 50
+        self.batch_size = 64
+        self.learning_rate = 0.01
+        self.hidden_size = 256
         self.layers = 2
 
 
@@ -107,6 +109,19 @@ def plot_loss(loss_values):
     plt.show()
 
 
+def temperature_sampling(logits, temperature):
+    # Apply temperature and mask padding index (21 in this case)
+    padding_index = 21
+    logits[:, padding_index] = float('-inf')  # Mask padding index
+
+    # Scale logits by temperature
+    scaled_logits = logits / temperature
+    probabilities = F.softmax(scaled_logits, dim=-1)
+
+    # Sample from the adjusted probability distribution
+    next_index = torch.multinomial(probabilities, num_samples=1).item()
+    return next_index
+
 class LSTMPeptides(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, batch_size, layers=2):
         super(LSTMPeptides, self).__init__()
@@ -127,19 +142,21 @@ class LSTMPeptides(nn.Module):
         self.embedding = nn.Embedding(num_embeddings=self.len_vocab, embedding_dim=self.embedding_dim, padding_idx=21)
 
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_size, self.layers, batch_first=True)
+        self.dropout_layer = nn.Dropout(p=0.5)
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x, prev_state):
 
         embed = self.embedding(x)
         output, state = self.lstm(embed, prev_state)
+        output = self.dropout_layer(output)
         logits = self.fc(output)
         return logits, state
 
     def init_state(self, batch_size):
 
-        return (torch.zeros(self.layers, batch_size, self.lstm_size),
-                torch.zeros(self.layers, batch_size, self.lstm_size))
+        return (torch.zeros(self.layers, batch_size, self.hidden_size),
+                torch.zeros(self.layers, batch_size, self.hidden_size))
 
 
 def train(peptides, model, seq_len, args):
@@ -148,7 +165,7 @@ def train(peptides, model, seq_len, args):
              'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
 
     inp_peptides, _ = to_tensor(peptides, vocab)
     print(f"Max index: {inp_peptides.max().item()}, Vocab size: {len(vocab)}")
@@ -237,18 +254,18 @@ def test(test_data, model, sequence_length, batch_size):
 
     return test_loss, accuracy
 
-def gen_peptides(model, seed, number_aa, vocab, device):
+
+def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
     model.eval()
 
     to_index = {a: i for i, a in enumerate(vocab)}
     index_to_amino = {i: a for i, a in enumerate(vocab)}
 
-    seed_indices = [to_index[aa] for aa in seed]
-    input_tensor = torch.Tensor(seed_indices).unsqueeze(0).to(device)
+    seed_indices = [to_index[aa] for aa in seed if aa in to_index and to_index[aa] != 21]
+    input_tensor = torch.LongTensor(seed_indices).unsqueeze(0).to(device)
 
     state_h, state_c = model.init_state(1)
-    state_h = state_h.to(device)
-    state_c = state_c.to(device)
+    state_h, state_c = state_h.to(device), state_c.to(device)
 
     gen_seq = seed
 
@@ -256,9 +273,12 @@ def gen_peptides(model, seed, number_aa, vocab, device):
         with torch.no_grad():
             y_pred, (state_h, state_c) = model(input_tensor, (state_h, state_c))
 
-        next_index = torch.argmax(y_pred[:, -1, :], dim=1).item()  # Get the last timestep prediction
-        next_amino = index_to_amino[next_index]
+        next_index = temperature_sampling(y_pred[:, -1, :], temperature)
 
+        if next_index == 21:
+            break
+
+        next_amino = index_to_amino[next_index]
         gen_seq += next_amino
 
         input_tensor = torch.cat((input_tensor, torch.tensor([[next_index]]).to(device)), dim=1)
@@ -285,6 +305,19 @@ loss_values = train(train_data, model, long_pep, args)
 test(test_data, model, long_pep, args.batch_size)
 
 plot_loss(loss_values)
-for i in range(1000):
-    number_aa = random.randint()
-gen_peptides(model, )
+
+gen_sequences = set()
+temperature = 0.9
+while len(gen_sequences) < 1000:
+    number_aa = random.randint(2, 20)
+    seed = random.choice(peptides[:5])
+    random_index = random.randint(0, 20)
+    gen_pep = gen_peptides(model, seed,  number_aa, vocab, device, temperature)
+    print(gen_pep)
+    gen_sequences.add(gen_pep)
+    print('Len sequences: ', len(gen_sequences))
+
+
+gen_sequences = list(gen_sequences)
+for pep in gen_sequences:
+    print(pep)
