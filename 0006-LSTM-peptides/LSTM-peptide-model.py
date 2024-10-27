@@ -261,7 +261,7 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
     to_index = {a: i for i, a in enumerate(vocab)}
     index_to_amino = {i: a for i, a in enumerate(vocab)}
 
-    seed_indices = [to_index[aa] for aa in seed if aa in to_index and to_index[aa] != 21]
+    seed_indices = [to_index[aa] for aa in seed if aa in to_index and to_index[aa] != 21]  # Avoid padding in seed
     input_tensor = torch.LongTensor(seed_indices).unsqueeze(0).to(device)
 
     state_h, state_c = model.init_state(1)
@@ -286,7 +286,6 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
     return gen_seq
 
 
-
 vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
          'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
 len_vocab = len(vocab)
@@ -309,7 +308,7 @@ plot_loss(loss_values)
 gen_sequences = set()
 temperature = 0.9
 while len(gen_sequences) < 1000:
-    number_aa = random.randint(2, 20)
+    number_aa = random.randint(2, 21)
     seed = random.choice(peptides[:5])
     random_index = random.randint(0, 20)
     gen_pep = gen_peptides(model, seed,  number_aa, vocab, device, temperature)
