@@ -1,0 +1,32 @@
+{
+  "os": "macOS-14.1.2-x86_64-i386-64bit",
+  "python": "3.11.0",
+  "startedAt": "2024-11-07T11:57:33.042169Z",
+  "program": "/Users/igorgonteri/Documents/GitHub/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py",
+  "codePath": "0006-LSTM-peptides/LSTM-peptide-model.py",
+  "git": {
+    "remote": "https://github.com/Frost-group/Nornour.git",
+    "commit": "f2093e8fecec8a69a2d27fecdd8dc8cdcb4b0654"
+  },
+  "email": "igor.gonteri@epfl.ch",
+  "root": "/Users/igorgonteri/Documents/GitHub/Nornour/0006-LSTM-peptides",
+  "host": "MacBook-Air-de-igor.local",
+  "username": "igorgonteri",
+  "executable": "/usr/local/bin/python3.11",
+  "codePathLocal": "LSTM-peptide-model.py",
+  "cpu_count": 2,
+  "cpu_count_logical": 4,
+  "disk": {
+    "/": {
+      "total": "121018208256",
+      "used": "112236789760"
+    }
+  },
+  "memory": {
+    "total": "8589934592"
+  },
+  "cpu": {
+    "count": 2,
+    "countLogical": 4
+  }
+}

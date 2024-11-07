@@ -1,3 +1,12 @@
+#use RW lexicon are actual text to see if it works
+#wandb.com to add in the code
+#use LLM for peptide pred
+#find the georgian work on internet
+#add argument parser for the arguments of the ML program
+
+import wandb
+import argparse
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -5,7 +14,7 @@ import torch.nn.functional as F
 
 import random
 import math
-import matplotlib.pyplot as plt
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
@@ -14,11 +23,77 @@ print(device)
 class LSTMArgs:
     def __init__(self):
         self.output_size = 22
-        self.num_epochs = 50
-        self.batch_size = 64
+        self.num_epochs = 100
+        self.batch_size = 8
         self.learning_rate = 0.01
-        self.hidden_size = 256
-        self.layers = 2
+        self.hidden_size = 128
+        self.layers = 3
+        self.dropout = 0.5
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train and test LSTM model for peptide sequences')
+
+    # Add arguments for each parameter in LSTMArgs
+    parser.add_argument('--output_size', type=int, default=22, help='Size of the output layer (default: 22)')
+    parser.add_argument('--num_epochs', type=int, default=100, help='Number of epochs for training (default: 100)')
+    parser.add_argument('--batch_size', type=int, default=8, help='Batch size for training and testing (default: 8)')
+    parser.add_argument('--learning_rate', type=float, default=0.01, help='Learning rate (default: 0.01)')
+    parser.add_argument('--hidden_size', type=int, default=128, help='Hidden layer size (default: 128)')
+    parser.add_argument('--layers', type=int, default=3, help='Number of LSTM layers (default: 3)')
+    parser.add_argument('--dropout', type=float, default=0.5, help='Dropout rate (default: 0.5)')
+
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Create an LSTMArgs object and populate it with the parsed arguments
+    lstm_args = LSTMArgs()
+    lstm_args.output_size = args.output_size
+    lstm_args.num_epochs = args.num_epochs
+    lstm_args.batch_size = args.batch_size
+    lstm_args.learning_rate = args.learning_rate
+    lstm_args.hidden_size = args.hidden_size
+    lstm_args.layers = args.layers
+    lstm_args.dropout = args.dropout
+
+    return lstm_args
+
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    config = {
+        'epochs': args.num_epochs,
+        'batch_size': args.batch_size,
+        'learning_rate': args.learning_rate,
+        'layers': args.layers,
+        'output_size': args.output_size,
+        'hidden_size': args.hidden_size,
+        'dropout': args.dropout
+    }
+
+    run = wandb.init(
+        project='LSTM-peptides',
+        notes=input('notes:  '),
+        config=config
+    )
+
+    print(f"Using configuration: {config}")
+
+sweep_configuration = {
+    'method': 'random',
+    'name': 'LSTM-peptides sweep',
+    'metric': {'goal': 'maximize', 'name': 'avg_epoch_accuracy'},
+    'parameters': {
+        'epochs': {'max': 200, 'min': 10},
+        'batch_size': {'values': [8, 16, 32]},
+        'learning_rate': {'max': 0.001, 'min': 0.02},
+        'layers': {'values': [1, 2, 3, 4]},
+        'hidden_size': {'values': [32, 64, 128, 256]},
+        'dropout': {'values': [0.2, 0.5, 0.7]}}
+}
+
+sweep_id = wandb.sweep(sweep=sweep_configuration, project="LSTM-peptides first sweep")
 
 
 def open_file(filepath):
@@ -98,32 +173,21 @@ def create_batches(tensor, batch_size):
 
     return batch
 
-def plot_loss(loss_values):
-    plt.figure(figsize=(10, 5))
-    plt.plot(loss_values, label='Training Loss', color='blue')
-    plt.title('Training Loss per Epoch')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.grid()
-    plt.show()
-
 
 def temperature_sampling(logits, temperature):
-    # Apply temperature and mask padding index (21 in this case)
+
     padding_index = 21
     logits[:, padding_index] = float('-inf')  # Mask padding index
 
-    # Scale logits by temperature
     scaled_logits = logits / temperature
     probabilities = F.softmax(scaled_logits, dim=-1)
 
-    # Sample from the adjusted probability distribution
     next_index = torch.multinomial(probabilities, num_samples=1).item()
     return next_index
 
+
 class LSTMPeptides(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, batch_size, layers=2):
+    def __init__(self, input_size, hidden_size, output_size, batch_size, layers=2, dropout=0.5):
         super(LSTMPeptides, self).__init__()
 
         self.input_size = input_size
@@ -132,6 +196,7 @@ class LSTMPeptides(nn.Module):
         self.output_size = output_size
         self.batch_size = batch_size
         self.layers = layers
+        self.dropout = dropout
 
         self.vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
                       'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
@@ -142,7 +207,7 @@ class LSTMPeptides(nn.Module):
         self.embedding = nn.Embedding(num_embeddings=self.len_vocab, embedding_dim=self.embedding_dim, padding_idx=21)
 
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_size, self.layers, batch_first=True)
-        self.dropout_layer = nn.Dropout(p=0.5)
+        self.dropout_layer = nn.Dropout(p=self.dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x, prev_state):
@@ -158,25 +223,45 @@ class LSTMPeptides(nn.Module):
         return (torch.zeros(self.layers, batch_size, self.hidden_size),
                 torch.zeros(self.layers, batch_size, self.hidden_size))
 
+    def training_step(self, x, y, criterion, is_training=True):
+        # Initialize state for the current batch
+        batch_size = x.size(0)
+        state_h, state_c = self.init_state(batch_size)
 
-def train(peptides, model, seq_len, args):
+        # Enable gradient tracking only if training
+        with torch.set_grad_enabled(is_training):
+            # Forward pass
+            y_pred, (state_h, state_c) = self(x, (state_h, state_c))
+
+            # Calculate loss
+            loss = criterion(y_pred.transpose(1, 2), y)
+
+            # Calculate accuracy
+            with torch.no_grad():
+                predicted = y_pred.argmax(dim=2)
+                correct = (predicted == y).float().sum()
+                accuracy = correct / y.numel()
+
+        return loss, accuracy
+
+
+def train(peptides, model):
     model.train()
     vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
              'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
+    optimizer = optim.Adam(model.parameters(), lr=wandb.config.learning_rate, weight_decay=1e-5)
 
     inp_peptides, _ = to_tensor(peptides, vocab)
     print(f"Max index: {inp_peptides.max().item()}, Vocab size: {len(vocab)}")
 
-    batch_size = args.batch_size
+    batch_size = wandb.config.batch_size
     print('\n-------Starting Training------- \n_________________________________')
 
-    epoch_losses = []
-
-    for epoch in range(args.num_epochs):
+    for epoch in range(wandb.config.num_epochs):
         epoch_loss = 0
+        epoch_accuracy = 0
 
         for batch in create_batches(inp_peptides, batch_size):
             current_batch_size = batch.size(0)
@@ -187,8 +272,7 @@ def train(peptides, model, seq_len, args):
             x = batch[:, :-1].to(device)
             y = batch[:, 1:].to(device)
 
-            y_pred, (state_h, state_c) = model(x, (state_h, state_c))
-            loss = criterion(y_pred.transpose(1, 2), y)
+            loss, accuracy = model.training_step(x, y, criterion)
 
             state_h = state_h.detach()
             state_c = state_c.detach()
@@ -197,14 +281,20 @@ def train(peptides, model, seq_len, args):
             optimizer.step()
 
             epoch_loss += loss.item()
+            epoch_accuracy += accuracy
 
-        avg_epoch_loss = epoch_loss / (len(peptides)//batch_size)
-        epoch_losses.append(avg_epoch_loss)
-        print({'epoch': epoch + 1, 'loss': avg_epoch_loss})
+
+
+        num_batches = len(create_batches(inp_peptides, batch_size))
+        avg_epoch_loss = epoch_loss / num_batches
+        avg_epoch_accuracy = epoch_accuracy / num_batches
+
+        wandb.log({"accuracy": avg_epoch_accuracy, "loss": avg_epoch_loss})
+
+        print(f"Epoch [{epoch + 1}/{wandb.config.num_epochs}], Loss: {avg_epoch_loss}, Accuracy: {avg_epoch_accuracy}")
 
     print('-------End of Training--------\n-----------------------------\n')
 
-    return epoch_losses
 
 
 def test(test_data, model, sequence_length, batch_size):
@@ -221,38 +311,33 @@ def test(test_data, model, sequence_length, batch_size):
 
     print('------Starting Testing------\n-----------------------------')
 
-    with torch.no_grad():
-        state_h, state_c = model.init_state(batch_size)
+    total_samples = 0
 
+    with torch.no_grad():
         # Iterate over test data in batches
         for batch in create_batches(inp_test_data, batch_size):
             current_batch_size = batch.size(0)
-            state_h, state_c = model.init_state(current_batch_size)
 
             x = batch[:, :-1].to(device)
             y = batch[:, 1:].to(device)
 
-            y_pred, (state_h, state_c) = model(x, (state_h, state_c))
+            # Use the modified training_step in test mode
+            loss, accuracy = model.training_step(x, y, criterion, is_training=False)
 
-            # Calculate the loss
-            test_loss += criterion(y_pred.transpose(1, 2), y).item()
-
-            # Calculate accuracy
-            correct += (y_pred.argmax(2) == y).type(torch.float).sum().item()
-
-            # Detach the hidden states to prevent backpropagation
-            state_h = state_h.detach()
-            state_c = state_c.detach()
+            test_loss += loss.item()
+            correct += accuracy * y.numel()  # Scale by the number of elements in the batch
+            total_samples += y.numel()  # Total number of target elements for accuracy
 
     # Average the loss and compute accuracy
-    num_batches = len(inp_test_data) // batch_size
+    num_batches = len(create_batches(inp_test_data, batch_size))  # Total number of batches
     test_loss /= num_batches
-    accuracy = correct / (len(test_data) * (sequence_length - 1))  # Adjust based on sequence length
+    test_accuracy = correct / total_samples  # Accuracy based on total target elements
 
     print(f'Test Error: \n Accuracy: {100 * accuracy:.2f}%, Avg loss: {test_loss:.4f} \n')
     print('------End of testing--------\n-----------------------------')
 
-    return test_loss, accuracy
+    return test_loss, test_accuracy
+
 
 
 def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
@@ -290,27 +375,28 @@ vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
          'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
 len_vocab = len(vocab)
 
-args = LSTMArgs()
-
-dataset = '/Users/igorgonteri/Documents/GitHub/Nornour/0003c-APD-Database/antimicrobial_peptides_database.txt'
+dataset = '/Users/igorgonteri/Documents/GitHub/Nornour/0003b-RW-Lexicon/RW_lexicon.dat'
 peptides, long_pep = open_file(dataset)
+print(peptides[7])
+
 pep_padded = padding(peptides, long_pep)
+print(pep_padded[7])
+
 train_data, test_data = split_data(pep_padded)
 
-model = LSTMPeptides(long_pep, args.hidden_size, args.output_size, args.batch_size, args.layers)
+model = LSTMPeptides(long_pep, wandb.config.hidden_size, wandb.config.output_size, wandb.config.batch_size, wandb.config.layers)
 
-loss_values = train(train_data, model, long_pep, args)
+train(train_data, model)
 
-test(test_data, model, long_pep, args.batch_size)
+test(test_data, model, long_pep, wandb.config.batch_size)
 
-plot_loss(loss_values)
 
-gen_sequences = set()
-temperature = 0.9
-while len(gen_sequences) < 1000:
-    number_aa = random.randint(2, 21)
-    seed = random.choice(peptides[:5])
-    random_index = random.randint(0, 20)
+
+"""gen_sequences = set()
+temperature = 0.6
+while len(gen_sequences) < 100:
+    number_aa = random.randint(6, 21)
+    seed = ['RWWW']
     gen_pep = gen_peptides(model, seed,  number_aa, vocab, device, temperature)
     print(gen_pep)
     gen_sequences.add(gen_pep)
@@ -319,4 +405,4 @@ while len(gen_sequences) < 1000:
 
 gen_sequences = list(gen_sequences)
 for pep in gen_sequences:
-    print(pep)
+    print(pep)"""

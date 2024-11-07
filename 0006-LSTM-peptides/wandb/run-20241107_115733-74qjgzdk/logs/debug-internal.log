@@ -1,0 +1,16 @@
+{"time":"2024-11-07T11:57:33.057517Z","level":"INFO","msg":"using version","core version":"0.18.6"}
+{"time":"2024-11-07T11:57:33.057672Z","level":"INFO","msg":"created symlink","path":"/Users/igorgonteri/Documents/GitHub/Nornour/0006-LSTM-peptides/wandb/run-20241107_115733-74qjgzdk/logs/debug-core.log"}
+{"time":"2024-11-07T11:57:33.092244Z","level":"INFO","msg":"created new stream","id":"74qjgzdk"}
+{"time":"2024-11-07T11:57:33.092409Z","level":"INFO","msg":"stream: started","id":"74qjgzdk"}
+{"time":"2024-11-07T11:57:33.092879Z","level":"INFO","msg":"sender: started","stream_id":"74qjgzdk"}
+{"time":"2024-11-07T11:57:33.092899Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"74qjgzdk"}}
+{"time":"2024-11-07T11:57:33.093087Z","level":"INFO","msg":"handler: started","stream_id":{"value":"74qjgzdk"}}
+{"time":"2024-11-07T11:57:33.393616Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-11-07T11:57:57.146421Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-11-07T11:57:57.148369Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-11-07T11:57:57.149615Z","level":"INFO","msg":"stream: closing","id":"74qjgzdk"}
+{"time":"2024-11-07T11:57:57.775403Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-11-07T11:57:57.959642Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"74qjgzdk"}}
+{"time":"2024-11-07T11:57:57.959686Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"74qjgzdk"}}
+{"time":"2024-11-07T11:57:57.95972Z","level":"INFO","msg":"sender: closed","stream_id":"74qjgzdk"}
+{"time":"2024-11-07T11:57:57.960602Z","level":"INFO","msg":"stream: closed","id":"74qjgzdk"}

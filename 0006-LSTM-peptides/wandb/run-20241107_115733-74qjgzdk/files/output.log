@@ -1,0 +1,93 @@
+Total peptides: 254
+Training set size: 215
+Test set size: 39
+Max index: 21, Vocab size: 22
+
+-------Starting Training-------
+_________________________________
+Epoch [1/50], Loss: 2.6414057474869947, Accuracy: 0.37740379571914673
+Epoch [2/50], Loss: 1.3560550671357374, Accuracy: 0.42868584394454956
+Epoch [3/50], Loss: 1.0952181357603807, Accuracy: 0.42307692766189575
+Epoch [4/50], Loss: 1.0462070611807017, Accuracy: 0.44631412625312805
+Epoch [5/50], Loss: 1.0336850652327905, Accuracy: 0.3974359333515167
+Epoch [6/50], Loss: 1.0088855715898366, Accuracy: 0.4254807233810425
+Epoch [7/50], Loss: 0.976454849426563, Accuracy: 0.4551282227039337
+Epoch [8/50], Loss: 0.9543821444878211, Accuracy: 0.47035253047943115
+Epoch [9/50], Loss: 0.9764093389877906, Accuracy: 0.4455128014087677
+Epoch [10/50], Loss: 0.942020805982443, Accuracy: 0.4791666567325592
+Epoch [11/50], Loss: 0.9313055551969088, Accuracy: 0.47836539149284363
+Epoch [12/50], Loss: 0.9240217163012578, Accuracy: 0.5024038553237915
+Epoch [13/50], Loss: 0.9242741098770728, Accuracy: 0.4863782227039337
+Epoch [14/50], Loss: 0.8892131860439594, Accuracy: 0.5040063858032227
+Epoch [15/50], Loss: 0.8780528673758874, Accuracy: 0.5056089758872986
+Epoch [16/50], Loss: 0.8591688275337219, Accuracy: 0.5032051205635071
+Epoch [17/50], Loss: 0.8532253366250259, Accuracy: 0.4999999701976776
+Epoch [18/50], Loss: 0.852417739538046, Accuracy: 0.5
+Epoch [19/50], Loss: 0.8463636499184829, Accuracy: 0.5120192170143127
+Epoch [20/50], Loss: 0.8547368462269123, Accuracy: 0.5080128312110901
+Epoch [21/50], Loss: 0.850564589867225, Accuracy: 0.5008013248443604
+Epoch [22/50], Loss: 0.8370080360999475, Accuracy: 0.504807710647583
+Epoch [23/50], Loss: 0.8363069295883179, Accuracy: 0.4919872283935547
+Epoch [24/50], Loss: 0.8340898752212524, Accuracy: 0.5184295177459717
+Epoch [25/50], Loss: 0.8429199319619399, Accuracy: 0.48717954754829407
+Epoch [26/50], Loss: 0.8357162704834571, Accuracy: 0.5352563858032227
+Epoch [27/50], Loss: 0.8374938277097849, Accuracy: 0.5064102411270142
+Epoch [28/50], Loss: 0.8515997116382306, Accuracy: 0.5216346383094788
+Epoch [29/50], Loss: 0.8445666294831496, Accuracy: 0.48798081278800964
+Epoch [30/50], Loss: 0.8358646539541391, Accuracy: 0.5064102411270142
+Epoch [31/50], Loss: 0.8258714996851407, Accuracy: 0.5024038553237915
+Epoch [32/50], Loss: 0.8238854087316073, Accuracy: 0.5320512652397156
+Epoch [33/50], Loss: 0.8335652305529668, Accuracy: 0.5176281929016113
+Epoch [34/50], Loss: 0.828004199724931, Accuracy: 0.5256410241127014
+Epoch [35/50], Loss: 0.8294782913648165, Accuracy: 0.5136217474937439
+Epoch [36/50], Loss: 0.8290089643918551, Accuracy: 0.5112179517745972
+Epoch [37/50], Loss: 0.8181551328072181, Accuracy: 0.5112179517745972
+Epoch [38/50], Loss: 0.8243407698778006, Accuracy: 0.5328525304794312
+Epoch [39/50], Loss: 0.830683960364415, Accuracy: 0.5328525900840759
+Epoch [40/50], Loss: 0.8223075499901404, Accuracy: 0.5192307829856873
+Epoch [41/50], Loss: 0.8285822776647714, Accuracy: 0.521634578704834
+Epoch [42/50], Loss: 0.8294110756654006, Accuracy: 0.5104166865348816
+Epoch [43/50], Loss: 0.8146274089813232, Accuracy: 0.5288462042808533
+Epoch [44/50], Loss: 0.8262117688472455, Accuracy: 0.5136218667030334
+Epoch [45/50], Loss: 0.8300278461896456, Accuracy: 0.5040063858032227
+Epoch [46/50], Loss: 0.8187586206656235, Accuracy: 0.5312500596046448
+Epoch [47/50], Loss: 0.8396999606719384, Accuracy: 0.521634578704834
+Epoch [48/50], Loss: 0.8255344996085534, Accuracy: 0.5200320482254028
+Epoch [49/50], Loss: 0.8264007384960468, Accuracy: 0.5224359035491943
+Epoch [50/50], Loss: 0.8227022244380071, Accuracy: 0.5200321078300476
+-------End of Training--------
+-----------------------------
+
+------Starting Testing------
+-----------------------------
+Test Error:
+ Accuracy: 31.25%, Avg loss: 0.8502
+
+------End of testing--------
+-----------------------------
+Traceback (most recent call last):
+  File "/Users/igorgonteri/Documents/GitHub/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 353, in <module>
+    gen_pep = gen_peptides(model, seed,  number_aa, vocab, device, temperature)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/igorgonteri/Documents/GitHub/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 314, in gen_peptides
+    y_pred, (state_h, state_c) = model(input_tensor, (state_h, state_c))
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/igorgonteri/Documents/GitHub/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 172, in forward
+    output, state = self.lstm(embed, prev_state)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/torch/nn/modules/rnn.py", line 878, in forward
+    result = _VF.lstm(input, hx, self._flat_weights, self.bias, self.num_layers,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Expected sequence length to be larger than 0 in RNN

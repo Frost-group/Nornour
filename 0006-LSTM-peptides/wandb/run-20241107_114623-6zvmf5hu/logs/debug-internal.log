@@ -1,0 +1,16 @@
+{"time":"2024-11-07T11:46:23.626614Z","level":"INFO","msg":"using version","core version":"0.18.6"}
+{"time":"2024-11-07T11:46:23.626857Z","level":"INFO","msg":"created symlink","path":"/Users/igorgonteri/Documents/GitHub/Nornour/0006-LSTM-peptides/wandb/run-20241107_114623-6zvmf5hu/logs/debug-core.log"}
+{"time":"2024-11-07T11:46:23.659413Z","level":"INFO","msg":"created new stream","id":"6zvmf5hu"}
+{"time":"2024-11-07T11:46:23.659572Z","level":"INFO","msg":"stream: started","id":"6zvmf5hu"}
+{"time":"2024-11-07T11:46:23.660689Z","level":"INFO","msg":"sender: started","stream_id":"6zvmf5hu"}
+{"time":"2024-11-07T11:46:23.660129Z","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"6zvmf5hu"}}
+{"time":"2024-11-07T11:46:23.66033Z","level":"INFO","msg":"handler: started","stream_id":{"value":"6zvmf5hu"}}
+{"time":"2024-11-07T11:46:24.950927Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-11-07T11:46:51.27343Z","level":"INFO","msg":"stream: closing","id":"6zvmf5hu"}
+{"time":"2024-11-07T11:46:51.273468Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-11-07T11:46:51.274231Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-11-07T11:46:53.235066Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-11-07T11:46:53.449117Z","level":"INFO","msg":"handler: closed","stream_id":{"value":"6zvmf5hu"}}
+{"time":"2024-11-07T11:46:53.449142Z","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"6zvmf5hu"}}
+{"time":"2024-11-07T11:46:53.449168Z","level":"INFO","msg":"sender: closed","stream_id":"6zvmf5hu"}
+{"time":"2024-11-07T11:46:53.44953Z","level":"INFO","msg":"stream: closed","id":"6zvmf5hu"}
