@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/igorgonteri/Documents/GitHub/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 333, in <module>
-    args = LSTMArgs()
-           ^^^^^^^^^^
-TypeError: 'LSTMArgs' object is not callable
