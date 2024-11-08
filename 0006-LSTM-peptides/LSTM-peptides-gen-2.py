@@ -3,8 +3,16 @@ import torch.nn.functional as F
 import argparse
 import random
 
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
+
+
+def load_model(model_path):
+    model = torch.load(model_path)
+    model.to(device)
+    model.eval()
+    return model
 
 
 def open_file(filepath):
@@ -23,12 +31,6 @@ def open_file(filepath):
         return None, None
 
 
-def load_model(model_path):
-    model = torch.load(model_path)
-    model.to(device)
-    model.eval()
-    return model
-
 
 def temperature_sampling(logits, temperature):
     padding_index = 21
@@ -39,13 +41,13 @@ def temperature_sampling(logits, temperature):
     return next_index
 
 
-def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
+def gen_peptides(model, seed, max_length, vocab, device, temperature=1.0):
     model.eval()
 
     to_index = {a: i for i, a in enumerate(vocab)}
     index_to_amino = {i: a for i, a in enumerate(vocab)}
-    seed_indices = [to_index[aa] for aa in seed if aa in to_index and to_index[aa] != 21]
 
+    seed_indices = [to_index[aa] for aa in seed if aa in to_index and to_index[aa] != 21]
     input_tensor = torch.LongTensor(seed_indices).unsqueeze(0).to(device)
 
     state_h, state_c = model.init_state(1)
@@ -53,8 +55,7 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
 
     gen_seq = seed
 
-    for _ in range(number_aa):
-
+    for _ in range(max_length):
         with torch.no_grad():
             y_pred, (state_h, state_c) = model(input_tensor, (state_h, state_c))
 
@@ -65,9 +66,10 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
 
         next_amino = index_to_amino[next_index]
         gen_seq += next_amino
+
         input_tensor = torch.cat((input_tensor, torch.tensor([[next_index]]).to(device)), dim=1)
 
-    return ''.join(gen_seq)
+    return gen_seq
 
 
 def main():
@@ -77,9 +79,8 @@ def main():
     parser.add_argument('--dataset_path', type=str, required=True, help="Path to dataset used for training the model")
     parser.add_argument('--temperature', type=float, default=1.0, help="Sampling temperature (default: 1.0)")
     parser.add_argument('--num_sequences', type=int, default=100, help="Number of unique sequences to generate")
-    parser.add_argument('--min_length', type=int, default=2, help="Minimum peptide length")
     parser.add_argument('--max_length', type=int, default=15, help="Maximum peptide length")
-    parser.add_argument('--seed', type=list, default=['R', 'W', 'W'], help="Seed sequence to start generation as a list (default: ['R', 'W', 'W'])")
+    parser.add_argument('--seed', type=list, default=['R', 'W', 'W'],help="Seed sequence to start generation as a list (default: ['R', 'W', 'W'])")
     args = parser.parse_args()
 
     model = load_model(args.model_path)
@@ -89,11 +90,10 @@ def main():
     vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
              'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
 
-    iteration = 0
     gen_sequences = set()
+    iteration = 0
     while len(gen_sequences) < args.num_sequences:
-        number_aa = random.randint(args.min_length, args.max_length)
-        gen_pep = gen_peptides(model, args.seed, number_aa, vocab, device, args.temperature)
+        gen_pep = gen_peptides(model, args.seed, args.max_length, vocab, device, args.temperature)
         gen_sequences.add(gen_pep)
         iteration += 1
         if iteration > (2 * args.num_sequences):
@@ -115,4 +115,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -1,8 +1,5 @@
-#use RW lexicon are actual text to see if it works
-#wandb.com to add in the code
 #use LLM for peptide pred
 #find the georgian work on internet
-#add argument parser for the arguments of the ML program
 
 import torch
 import torch.nn as nn
@@ -23,38 +20,38 @@ print(device)
 class LSTMArgs:
     def __init__(self):
         self.output_size = 22
-        self.num_epochs = 50
-        self.batch_size = 16
-        self.learning_rate = 0.001
-        self.hidden_size = 128
-        self.layers = 3
-        self.dropout = 0.5
+        self.epochs = 50
+        self.batch_size = 8
+        self.learning_rate = 0.00063
+        self.hidden_size = 256
+        self.layers = 2
+        self.dropout = 0.7
+        self.save_model = False
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and test LSTM model for peptide sequences')
 
-    # Add arguments for each parameter in LSTMArgs
     parser.add_argument('--output_size', type=int, default=22, help='Size of the output layer (default: 22)')
-    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs for training (default: 100)')
-    parser.add_argument('--batch_size', type=int, default=16, help='Batch size for training and testing (default: 8)')
-    parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate (default: 0.01)')
-    parser.add_argument('--hidden_size', type=int, default=128, help='Hidden layer size (default: 128)')
-    parser.add_argument('--layers', type=int, default=3, help='Number of LSTM layers (default: 3)')
-    parser.add_argument('--dropout', type=float, default=0.5, help='Dropout rate (default: 0.5)')
+    parser.add_argument('--epochs', type=int, default=50, help='Number of epochs for training (default: 100)')
+    parser.add_argument('--batch_size', type=int, default=8, help='Batch size for training and testing (default: 8)')
+    parser.add_argument('--learning_rate', type=float, default=0.00063, help='Learning rate (default: 0.01)')
+    parser.add_argument('--hidden_size', type=int, default=256, help='Hidden layer size (default: 128)')
+    parser.add_argument('--layers', type=int, default=2, help='Number of LSTM layers (default: 3)')
+    parser.add_argument('--dropout', type=float, default=0.7, help='Dropout rate (default: 0.5)')
+    parser.add_argument('--save_model', type=bool, default=False, help='Save the trained model (default: False)')
 
-    # Parse the arguments
     args = parser.parse_args()
 
-    # Create an LSTMArgs object and populate it with the parsed arguments
     lstm_args = LSTMArgs()
     lstm_args.output_size = args.output_size
-    lstm_args.num_epochs = args.num_epochs
+    lstm_args.epochs = args.epochs
     lstm_args.batch_size = args.batch_size
     lstm_args.learning_rate = args.learning_rate
     lstm_args.hidden_size = args.hidden_size
     lstm_args.layers = args.layers
     lstm_args.dropout = args.dropout
+    lstm_args.save_model = args.save_model
 
     return lstm_args
 
@@ -62,7 +59,7 @@ def parse_args():
 args = parse_args()
 
 config = {
-        'num_epochs': args.num_epochs,
+        'epochs': args.epochs,
         'batch_size': args.batch_size,
         'learning_rate': args.learning_rate,
         'layers': args.layers,
@@ -73,24 +70,10 @@ config = {
 
 run = wandb.init(
         project='LSTM-peptides',
-        notes=input('notes:  '),
         config=config
     )
 
 print(f"Using configuration: {config}")
-
-sweep_configuration = {
-    'method': 'random',
-    'name': 'LSTM-peptides sweep',
-    'metric': {'goal': 'maximize', 'name': 'avg_epoch_accuracy'},
-    'parameters': {
-        'epochs': {'max': 200, 'min': 10},
-        'batch_size': {'values': [8, 16, 32]},
-        'learning_rate': {'max': 0.02, 'min': 0.001},
-        'layers': {'values': [1, 2, 3, 4]},
-        'hidden_size': {'values': [32, 64, 128, 256]},
-        'dropout': {'values': [0.2, 0.5, 0.7]}}
-}
 
 
 def open_file(filepath):
@@ -209,19 +192,16 @@ class LSTMPeptides(nn.Module):
                 torch.zeros(self.layers, batch_size, self.hidden_size))
 
     def training_step(self, x, y, criterion, is_training=True):
-        # Initialize state for the current batch
+
         batch_size = x.size(0)
         state_h, state_c = self.init_state(batch_size)
 
-        # Enable gradient tracking only if training
         with torch.set_grad_enabled(is_training):
-            # Forward pass
+
             y_pred, (state_h, state_c) = self(x, (state_h, state_c))
 
-            # Calculate loss
             loss = criterion(y_pred.transpose(1, 2), y)
 
-            # Calculate accuracy
             with torch.no_grad():
                 predicted = y_pred.argmax(dim=2)
                 correct = (predicted == y).float().sum()
@@ -243,13 +223,12 @@ def train(peptides, model):
     batch_size = wandb.config.batch_size
     print('\n-------Starting Training------- \n_________________________________')
 
-    for epoch in range(wandb.config.num_epochs):
+    for epoch in range(wandb.config.epochs):
         epoch_loss = 0
         epoch_accuracy = 0
         num_batches = len(create_batches(inp_peptides, batch_size))
 
-        # Adding tqdm progress bar for batches
-        with tqdm(total=num_batches, desc=f"Epoch [{epoch + 1}/{wandb.config.num_epochs}]", leave=True) as pbar:
+        with tqdm(total=num_batches, desc=f"Epoch [{epoch + 1}/{wandb.config.epochs}]", leave=True) as pbar:
             for batch in create_batches(inp_peptides, batch_size):
                 current_batch_size = batch.size(0)
                 state_h, state_c = model.init_state(current_batch_size)
@@ -270,7 +249,6 @@ def train(peptides, model):
                 epoch_loss += loss.item()
                 epoch_accuracy += accuracy
 
-                # Update progress bar
                 pbar.update(1)
                 pbar.set_postfix(loss=loss.item(), accuracy=accuracy)
 
@@ -282,7 +260,7 @@ def train(peptides, model):
         except BrokenPipeError:
             print("WandB connection lost, skipping logging for this iteration.")
 
-        print(f"Epoch [{epoch + 1}/{wandb.config.num_epochs}], Loss: {avg_epoch_loss}, Accuracy: {avg_epoch_accuracy}")
+        print(f"Epoch [{epoch + 1}/{wandb.config.epochs}], Loss: {avg_epoch_loss}, Accuracy: {avg_epoch_accuracy}")
 
     print('-------End of Training--------\n-----------------------------\n')
 
@@ -296,38 +274,34 @@ def test(test_data, model, batch_size):
     test_loss, correct = 0, 0
     criterion = nn.CrossEntropyLoss()
 
-    # Convert test_data to tensor format
     inp_test_data, _ = to_tensor(test_data, vocab)
-    inp_test_data = inp_test_data.to(device)  # Move to the appropriate device
+    inp_test_data = inp_test_data.to(device)
 
     print('------Starting Testing------\n-----------------------------')
 
     total_samples = 0
 
     with torch.no_grad():
-        # Iterate over test data in batches
+
         for batch in create_batches(inp_test_data, batch_size):
             current_batch_size = batch.size(0)
 
             x = batch[:, :-1].to(device)
             y = batch[:, 1:].to(device)
 
-            # Use the modified training_step in test mode
             loss, accuracy = model.training_step(x, y, criterion, is_training=False)
 
             test_loss += loss.item()
-            correct += accuracy * y.numel()  # Scale by the number of elements in the batch
-            total_samples += y.numel()  # Total number of target elements for accuracy
+            correct += accuracy * y.numel()
+            total_samples += y.numel()
 
-    # Average the loss and compute accuracy
-    num_batches = len(create_batches(inp_test_data, batch_size))  # Total number of batches
+    num_batches = len(create_batches(inp_test_data, batch_size))
     test_loss /= num_batches
-    test_accuracy = correct / total_samples  # Accuracy based on total target elements
+    test_accuracy = correct / total_samples
 
-    print(f'Test Error: \n Accuracy: {100 * accuracy:.2f}%, Avg loss: {test_loss:.4f} \n')
+    print(f'Test Error: \n Accuracy: {100 * test_accuracy:.2f}%, Avg loss: {test_loss:.4f} \n')
     print('------End of testing--------\n-----------------------------')
 
-    return test_loss, test_accuracy
 
 
 if __name__ == "__main__":
@@ -348,3 +322,8 @@ if __name__ == "__main__":
     train(train_data, model)
 
     test(test_data, model, wandb.config.batch_size)
+
+    if args.save_model:
+        model_path = "lstm_peptides_model.pt"
+        torch.save(model.state_dict(), model_path)
+        print(f"Model saved to {model_path}")
