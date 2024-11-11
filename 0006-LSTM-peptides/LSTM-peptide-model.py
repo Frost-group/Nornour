@@ -309,7 +309,7 @@ if __name__ == "__main__":
              'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
     len_vocab = len(vocab)
 
-    dataset = '/Users/igorgonteri/Documents/GitHub/Nornour/0003b-RW-Lexicon/RW_lexicon.dat'
+    dataset = '/Users/igorgonteri/Desktop/Imperial College/LSTM_peptides/Nornour/0003b-RW-Lexicon/RW_lexicon.dat'
     peptides, long_pep = open_file(dataset)
 
     pep_padded = padding(peptides, long_pep)
@@ -325,5 +325,5 @@ if __name__ == "__main__":
 
     if args.save_model:
         model_path = "lstm_peptides_model.pt"
-        torch.save(model.state_dict(), model_path)
+        torch.save(model, model_path)
         print(f"Model saved to {model_path}")

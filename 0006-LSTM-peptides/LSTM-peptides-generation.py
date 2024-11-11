@@ -24,8 +24,7 @@ def open_file(filepath):
 
 
 def load_model(model_path):
-    model = torch.load(model_path)
-    model.to(device)
+    model = torch.load(model_path, weights_only=False)
     model.eval()
     return model
 
@@ -115,4 +114,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

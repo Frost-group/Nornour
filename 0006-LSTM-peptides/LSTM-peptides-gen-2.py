@@ -9,7 +9,7 @@ print(f"Using device: {device}")
 
 
 def load_model(model_path):
-    model = torch.load(model_path)
+    model = torch.load(model_path, weights_only=False)
     model.to(device)
     model.eval()
     return model
