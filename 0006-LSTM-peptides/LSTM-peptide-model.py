@@ -27,6 +27,8 @@ class LSTMArgs:
         self.hidden_size = 256
         self.layers = 2
         self.dropout = 0.7
+        self.vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
+                      'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
         self.save_model = False
 
 
@@ -41,6 +43,7 @@ def parse_args():
     parser.add_argument('--hidden_size', type=int, default=256, help='Hidden layer size (default: 128)')
     parser.add_argument('--layers', type=int, default=2, help='Number of LSTM layers (default: 3)')
     parser.add_argument('--dropout', type=float, default=0.7, help='Dropout rate (default: 0.5)')
+    parser.add_argument('--vocabulary', type=list, default= ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_'], help='List of amino acids and padding index')
     parser.add_argument('--save_model', type=bool, default=False, help='Save the trained model (default: False)')
 
     args = parser.parse_args()
@@ -54,6 +57,7 @@ def parse_args():
     lstm_args.hidden_size = args.hidden_size
     lstm_args.layers = args.layers
     lstm_args.dropout = args.dropout
+    lstm_args.vocab = args.vocabulary
     lstm_args.save_model = args.save_model
 
     return lstm_args
@@ -158,19 +162,18 @@ def create_batches(tensor, batch_size):
 
 
 class LSTMPeptides(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, batch_size, layers=2, dropout=0.5):
+    def __init__(self, input_size):
         super(LSTMPeptides, self).__init__()
 
         self.input_size = input_size
-        self.hidden_size = hidden_size
+        self.hidden_size = args.hidden_size
         self.lstm_size = 128
-        self.output_size = output_size
-        self.batch_size = batch_size
-        self.layers = layers
-        self.dropout = dropout
+        self.output_size = args.output_size
+        self.batch_size = args.batch_size
+        self.layers = args.layers
+        self.dropout = args.dropout
 
-        self.vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
-                      'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
+        self.vocab = args.vocab
 
         self.len_vocab = len(self.vocab)
 
@@ -179,7 +182,7 @@ class LSTMPeptides(nn.Module):
 
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_size, self.layers, batch_first=True)
         self.dropout_layer = nn.Dropout(p=self.dropout)
-        self.fc = nn.Linear(hidden_size, output_size)
+        self.fc = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, x, prev_state):
 
@@ -215,8 +218,7 @@ class LSTMPeptides(nn.Module):
 
 def train(peptides, model):
     model.train()
-    vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
-             'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
+    vocab = args.vocab
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=wandb.config.learning_rate, weight_decay=1e-5)
 
@@ -270,8 +272,7 @@ def train(peptides, model):
 
 
 def test(test_data, model, batch_size):
-    vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
-             'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
+    vocab = args.vocab
 
     model.eval()
     test_loss, correct = 0, 0
@@ -308,8 +309,7 @@ def test(test_data, model, batch_size):
 
 
 if __name__ == "__main__":
-    vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
-             'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
+    vocab = args.vocab
     len_vocab = len(vocab)
 
     dataset = args.dataset_path
@@ -319,8 +319,7 @@ if __name__ == "__main__":
 
     train_data, test_data = split_data(pep_padded)
 
-    model = LSTMPeptides(long_pep, wandb.config.hidden_size, wandb.config.output_size, wandb.config.batch_size,
-                         wandb.config.layers)
+    model = LSTMPeptides(long_pep)
 
     train(train_data, model)
 
@@ -328,5 +327,8 @@ if __name__ == "__main__":
 
     if args.save_model:
         model_path = "lstm_peptides_model.pt"
-        torch.save(model, model_path)
+        torch.save(model.state_dict(), model_path)
         print(f"Model saved to {model_path}")
+
+    print('Command to run for peptide generation: \n')
+    print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path lstm_peptides_model.pt --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 100 --min_length 2 --max_length 15 --seed RWW""")
