@@ -19,6 +19,7 @@ print(device)
 
 class LSTMArgs:
     def __init__(self):
+        self.dataset_path = '../0003b-RW-Lexicon/RW_lexicon.dat'
         self.output_size = 22
         self.epochs = 50
         self.batch_size = 8
@@ -32,6 +33,7 @@ class LSTMArgs:
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and test LSTM model for peptide sequences')
 
+    parser.add_argument('--dataset_path', type=str, required=True, help='Path to the dataset to use for training')
     parser.add_argument('--output_size', type=int, default=22, help='Size of the output layer (default: 22)')
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs for training (default: 100)')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size for training and testing (default: 8)')
@@ -44,6 +46,7 @@ def parse_args():
     args = parser.parse_args()
 
     lstm_args = LSTMArgs()
+    lstm_args.dataset_path = args.dataset_path
     lstm_args.output_size = args.output_size
     lstm_args.epochs = args.epochs
     lstm_args.batch_size = args.batch_size
@@ -309,7 +312,7 @@ if __name__ == "__main__":
              'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
     len_vocab = len(vocab)
 
-    dataset = '/Users/igorgonteri/Desktop/Imperial College/LSTM_peptides/Nornour/0003b-RW-Lexicon/RW_lexicon.dat'
+    dataset = args.dataset_path
     peptides, long_pep = open_file(dataset)
 
     pep_padded = padding(peptides, long_pep)
