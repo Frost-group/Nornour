@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument('--hidden_size', type=int, default=256, help='Hidden layer size (default: 128)')
     parser.add_argument('--layers', type=int, default=2, help='Number of LSTM layers (default: 3)')
     parser.add_argument('--dropout', type=float, default=0.7, help='Dropout rate (default: 0.5)')
-    parser.add_argument('--vocabulary', type=list, default= ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_'], help='List of amino acids and padding index')
+    parser.add_argument('--vocabulary', type=str, default= "RHKDESTNQCUGPAILMFWYV_", help='List of amino acids and padding index')
     parser.add_argument('--save_model', type=bool, default=False, help='Save the trained model (default: False)')
 
     args = parser.parse_args()
@@ -57,7 +57,7 @@ def parse_args():
     lstm_args.hidden_size = args.hidden_size
     lstm_args.layers = args.layers
     lstm_args.dropout = args.dropout
-    lstm_args.vocab = args.vocabulary
+    lstm_args.vocab = list(args.vocabulary)
     lstm_args.save_model = args.save_model
 
     return lstm_args
