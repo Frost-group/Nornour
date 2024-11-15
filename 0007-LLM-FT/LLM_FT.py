@@ -5,7 +5,7 @@ from transformers import AutoTokenizer
 from datasets import Dataset
 from transformers import AutoModelForCausalLM
 
-hf_token = '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'
+hf_token = 
 login(token=hf_token, add_to_git_credential=True)
 
 def open_file(filepath):
@@ -74,7 +74,7 @@ class PeptideTokenizer:
 
 model = AutoModelForCausalLM.from_pretrained('meta-llama/Llama-3.2-1B')
 
-model_checkpoint = "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"
+model_checkpoint = 
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, token=hf_token)
 
 dataset_path = '/Users/igorgonteri/Desktop/LLM_fine_tuning/re_datasets/RW_lexicon.txt'
