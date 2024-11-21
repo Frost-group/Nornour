@@ -37,6 +37,16 @@ gmx grompp -p ${peptide}-solvated.top -c solvated.gro -f minimization.mdp -o min
 # Simulate protein MD with XTB (empirical tight-binding) model; uses Langevin
 # dynamics and an implicit water model
 # xtb --gfn 2 --md ${peptide}.pdb
+ 
+cat >> control.input << EOF
+$md
+  step=2.0
+  hmass=4.0
+  shake=0
+$end
+EOF
 
+ xtb --gfnff --md -I control.input ${peptide}.pdb
+ # --gfn 2
 done
 
