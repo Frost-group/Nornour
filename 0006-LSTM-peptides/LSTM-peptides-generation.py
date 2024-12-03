@@ -3,40 +3,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import argparse
 import random
+import csv
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 
-def open_file(filepath):
-    try:
-        with open(filepath, 'r') as doc:
-            peptides = doc.readlines()
-
-        peptides = [pep.strip() for pep in peptides if pep.strip()]
-
-        long_pep = max(len(pep) for pep in peptides)
-
-        return peptides, long_pep
-
-    except FileNotFoundError:
-        print(f"File not found: {filepath}")
-        return None, None
-
-
-def temperature_sampling(logits, temperature):
-    padding_index = 21
-    logits[:, padding_index] = float('-inf')
-    scaled_logits = logits / temperature
-    probabilities = F.softmax(scaled_logits, dim=-1)
-    next_index = torch.multinomial(probabilities, num_samples=1).item()
-    return next_index
-
-
 class LSTMArgs:
     def __init__(self):
         self.dataset_path = '../0003b-RW-Lexicon/RW_lexicon.dat'
+        self.output_path = 'generation_output.fasta'
         self.output_size = 22
         self.epochs = 50
         self.batch_size = 8
@@ -54,6 +31,7 @@ class LSTMArgs:
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and generate peptides using LSTM model')
     parser.add_argument('--dataset_path', type=str, required=True, help='Path to the dataset used for training')
+    parser.add_argument('--output_path', type=str, required=True, help='Path to the output file for generated sequences (.fasta format)')
     parser.add_argument('--model_path', type=str, required=True, help='Path to the trained model')
     parser.add_argument('--output_size', type=int, default=22, help='Size of the output layer (default: 22)')
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs for training')
@@ -128,7 +106,31 @@ class LSTMPeptides(nn.Module):
 
         return loss, accuracy
 
-    
+
+def open_file(filepath):
+    try:
+        with open(filepath, 'r') as doc:
+            peptides = doc.readlines()
+
+        peptides = [pep.strip() for pep in peptides if pep.strip()]
+
+        long_pep = max(len(pep) for pep in peptides)
+
+        return peptides, long_pep
+
+    except FileNotFoundError:
+        print(f"File not found: {filepath}")
+        return None, None
+
+
+def temperature_sampling(logits, temperature):
+    padding_index = 21
+    logits[:, padding_index] = float('-inf')
+    scaled_logits = logits / temperature
+    probabilities = F.softmax(scaled_logits, dim=-1)
+    next_index = torch.multinomial(probabilities, num_samples=1).item()
+    return next_index
+
 
 def load_model(model_path, long_pep):
     model = LSTMPeptides(long_pep)
@@ -169,6 +171,15 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
     return ''.join(gen_seq)
 
 
+def seq_to_fasta(peptide: list, file_path: str):
+    for i in range(len(peptide)):
+        peptide_fasta = f'>peptide_{i}\n{peptide[i]}'
+
+    with open(file_path, 'w') as file:
+        for fasta in peptide_fasta:
+            file.write(fasta + "\n")
+    print(f'Peptides stored in fasta format at: {file_path}')
+
 
 def main():
 
@@ -207,11 +218,17 @@ def main():
     long_len = len(max(gen_sequences, key=len))
 
     print(f'Shortest peptide: {short_len} amino acids')
-    print(f'Longest peptide: {long_len} amino acids')
+    print(f'Longest peptide: {long_len} amino acids\n')
 
+    gen_seq_list = list(gen_sequences)
+    seq_to_fasta(gen_seq_list, args.output_file)
 
 if __name__ == "__main__":
     main()
+
+
+#python LSTM-peptides-generation.py --dataset_path /Users/igorgonteri/Documents/GitHub/Nornour/0003b-RW-Lexicon/RW_lexicon.dat --output_path /Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/generation_output.fasta --model_path lstm_peptides_model.pt --output_size 22 --epochs 50 --batch_size 8 --learning_rate 0.00063 --hidden_size 256 --layers 2 --dropout 0.7 --temperature 1.5 --num_sequences 100 --min_length 2 --max_length 20 --seed RWWR
+
 
 
 
