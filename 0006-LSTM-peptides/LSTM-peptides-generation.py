@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import argparse
 import random
-import csv
 
+#Need to add biases to the generation: Remove point for certain bad AA and for negatively charged AA
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
@@ -52,6 +52,63 @@ def parse_args():
 args = parse_args()
 
 class LSTMPeptides(nn.Module):
+    """
+    A Long Short-Term Memory (LSTM) model designed for peptide sequence modeling.
+
+    Args:
+        - input_size (int): Size of the input feature vector for each timestep.
+
+    Attributes:
+        - input_size (int): Size of the input feature vector for each timestep.
+        - hidden_size (int): Number of hidden units in the LSTM layers.
+        - lstm_size (int): Internal dimension size of the LSTM (default set to 128).
+        - output_size (int): Size of the output layer.
+        - batch_size (int): Batch size used during training or inference.
+        - layers (int): Number of LSTM layers.
+        - dropout (float): Dropout rate applied after the LSTM layer.
+        - vocab (list[str]): Amino acid vocabulary including padding ('_').
+        - len_vocab (int): Length of the vocabulary.
+        - embedding_dim (int): Dimension of the embedding layer.
+        - embedding (nn.Embedding): Embedding layer for amino acid sequences.
+        - lstm (nn.LSTM): LSTM layer for sequential processing.
+        - dropout_layer (nn.Dropout): Dropout layer to regularize the model.
+        - fc (nn.Linear): Fully connected layer to produce output logits.
+
+    Methods:
+        - forward(x, prev_state):
+            Computes the forward pass through the embedding, LSTM, and output layers.
+
+            Args:
+                - x (Tensor): Input tensor of peptide sequences, encoded as indices.
+                - prev_state (tuple): Initial hidden and cell states for the LSTM.
+
+            Returns:
+                - logits (Tensor): Logits output from the fully connected layer.
+                - state (tuple): Updated hidden and cell states.
+
+        - init_state(batch_size):
+            Initializes the hidden and cell states for the LSTM.
+
+            Args:
+                - batch_size (int): Batch size for the current input.
+
+            Returns:
+                - tuple: Initialized hidden and cell states (zeros).
+
+        - training_step(x, y, criterion, is_training=True):
+            Performs a single training or evaluation step, including forward pass, loss calculation,
+            and accuracy computation.
+
+            Args:
+                - x (Tensor): Input tensor of encoded peptide sequences.
+                - y (Tensor): Target tensor for the ground truth labels.
+                - criterion (callable): Loss function (e.g., CrossEntropyLoss).
+                - is_training (bool): Whether the model is in training mode.
+
+            Returns:
+                - loss (Tensor): Calculated loss for the batch.
+                - accuracy (float): Accuracy metric for the predictions.
+    """
     def __init__(self, input_size):
         super(LSTMPeptides, self).__init__()
 
@@ -99,6 +156,7 @@ class LSTMPeptides(nn.Module):
 
             loss = criterion(y_pred.transpose(1, 2), y)
 
+            #calculate metrics
             with torch.no_grad():
                 predicted = y_pred.argmax(dim=2)
                 correct = (predicted == y).float().sum()
@@ -108,6 +166,17 @@ class LSTMPeptides(nn.Module):
 
 
 def open_file(filepath):
+    """
+     Reads a file containing peptide sequences, processes the sequences,
+     and determines the length of the longest peptide.
+
+     Args:
+         - filepath (str): Path to the file containing peptide sequences.
+
+     Returns:
+         - peptides (list[str]): List of cleaned peptide sequences.
+         - long_pep (int): Length of the longest peptide in the file.
+     """
     try:
         with open(filepath, 'r') as doc:
             peptides = doc.readlines()
@@ -133,6 +202,10 @@ def temperature_sampling(logits, temperature):
 
 
 def load_model(model_path, long_pep):
+    """
+
+
+    """
     model = LSTMPeptides(long_pep)
     model.load_state_dict(torch.load(model_path, weights_only=True))
     model.eval()
@@ -172,13 +245,12 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
 
 
 def seq_to_fasta(peptide: list, file_path: str):
-    for i in range(len(peptide)):
-        peptide_fasta = f'>peptide_{i}\n{peptide[i]}'
-
     with open(file_path, 'w') as file:
-        for fasta in peptide_fasta:
-            file.write(fasta + "\n")
-    print(f'Peptides stored in fasta format at: {file_path}')
+        for i, seq in enumerate(peptide):
+            # Format each peptide into FASTA format
+            fasta_entry = f'>peptide_{i+1}\n{seq}\n'
+            file.write(fasta_entry)  # Write each FASTA entry to the file
+    print(f'Peptides stored in FASTA format at: {file_path}')
 
 
 def main():
@@ -221,13 +293,10 @@ def main():
     print(f'Longest peptide: {long_len} amino acids\n')
 
     gen_seq_list = list(gen_sequences)
-    seq_to_fasta(gen_seq_list, args.output_file)
+    seq_to_fasta(gen_seq_list, args.output_path)
 
 if __name__ == "__main__":
     main()
-
-
-#python LSTM-peptides-generation.py --dataset_path /Users/igorgonteri/Documents/GitHub/Nornour/0003b-RW-Lexicon/RW_lexicon.dat --output_path /Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/generation_output.fasta --model_path lstm_peptides_model.pt --output_size 22 --epochs 50 --batch_size 8 --learning_rate 0.00063 --hidden_size 256 --layers 2 --dropout 0.7 --temperature 1.5 --num_sequences 100 --min_length 2 --max_length 20 --seed RWWR
 
 
 

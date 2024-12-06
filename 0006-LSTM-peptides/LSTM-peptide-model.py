@@ -84,6 +84,17 @@ print(f"Using configuration: {config}")
 
 
 def open_file(filepath):
+    """
+     Reads a file containing peptide sequences, processes the sequences,
+     and determines the length of the longest peptide.
+
+     Args:
+         - filepath (str): Path to the file containing peptide sequences.
+
+     Returns:
+         - peptides (list[str]): List of cleaned peptide sequences.
+         - long_pep (int): Length of the longest peptide in the file.
+     """
     try:
         with open(filepath, 'r') as doc:
             peptides = doc.readlines()
@@ -100,6 +111,16 @@ def open_file(filepath):
 
 
 def padding(peptides, long_pep):
+    """
+     Pads peptide sequences with underscores ('_') to match the length of the longest peptide.
+
+     Args:
+         - peptides (list[str]): List of peptide sequences.
+         - long_pep (int): Length of the longest peptide.
+
+     Returns:
+         - peptides (list[str]): List of padded peptide sequences.
+     """
     for i, pep in enumerate(peptides):
         pad_length = long_pep - len(pep)
 
@@ -110,6 +131,16 @@ def padding(peptides, long_pep):
 
 
 def split_data(peptides):
+    """
+    Splits the peptide dataset into training and testing sets (85% training, 15% testing).
+
+    Args:
+        - peptides (list[str]): List of peptide sequences.
+
+    Returns:
+        - train_data (list[str]): Training set of peptide sequences.
+        - test_data (list[str]): Testing set of peptide sequences.
+    """
     len_pep = len(peptides)
     train_tresh = math.floor(len_pep * 0.85)
 
@@ -124,6 +155,17 @@ def split_data(peptides):
 
 
 def to_tensor(peptides, vocab):
+    """
+        Converts peptide sequences into tensor format using a given vocabulary.
+
+        Args:
+            - peptides (list[str]): List of peptide sequences.
+            - vocab (list[str]): Vocabulary of amino acids and padding.
+
+        Returns:
+            - tensor (torch.Tensor): Tensor of encoded peptide sequences.
+            - to_index (dict): Dictionary mapping amino acids to indices.
+    """
     to_index = {a: i for i, a in enumerate(vocab)}
     result = []
 
@@ -138,6 +180,16 @@ def to_tensor(peptides, vocab):
 
 
 def to_amino(tensor, vocab):
+    """
+        Converts a tensor of indices back into amino acid sequences.
+
+        Args:
+            - tensor (torch.Tensor): Tensor of encoded peptide sequences.
+            - vocab (list[str]): Vocabulary of amino acids and padding.
+
+        Returns:
+            - sequences (list[str]): List of decoded peptide sequences.
+    """
     sequences = []
     for seq in tensor:
         amino_seq = ''.join([vocab[idx] for idx in seq])
@@ -146,12 +198,23 @@ def to_amino(tensor, vocab):
 
 
 def create_batches(tensor, batch_size):
+    """
+       Creates batches of data from a tensor, ensuring each batch has the specified size.
+
+       Args:
+           - tensor (torch.Tensor): Tensor of data to be batched.
+           - batch_size (int): Number of samples per batch.
+
+       Returns:
+           - batch (list[torch.Tensor]): List of data batches.
+    """
     data_size = len(tensor)
     indices = list(range(data_size))
     random.shuffle(indices)
 
     batch = []
 
+    #create all the batches
     for start in range(0, data_size, batch_size):
         end = min(start + batch_size, data_size)
         batch_indices = indices[start:end]
@@ -162,6 +225,63 @@ def create_batches(tensor, batch_size):
 
 
 class LSTMPeptides(nn.Module):
+    """
+    A Long Short-Term Memory (LSTM) model designed for peptide sequence modeling.
+
+    Args:
+        - input_size (int): Size of the input feature vector for each timestep.
+
+    Attributes:
+        - input_size (int): Size of the input feature vector for each timestep.
+        - hidden_size (int): Number of hidden units in the LSTM layers.
+        - lstm_size (int): Internal dimension size of the LSTM (default set to 128).
+        - output_size (int): Size of the output layer.
+        - batch_size (int): Batch size used during training or inference.
+        - layers (int): Number of LSTM layers.
+        - dropout (float): Dropout rate applied after the LSTM layer.
+        - vocab (list[str]): Amino acid vocabulary including padding ('_').
+        - len_vocab (int): Length of the vocabulary.
+        - embedding_dim (int): Dimension of the embedding layer.
+        - embedding (nn.Embedding): Embedding layer for amino acid sequences.
+        - lstm (nn.LSTM): LSTM layer for sequential processing.
+        - dropout_layer (nn.Dropout): Dropout layer to regularize the model.
+        - fc (nn.Linear): Fully connected layer to produce output logits.
+
+    Methods:
+        - forward(x, prev_state):
+            Computes the forward pass through the embedding, LSTM, and output layers.
+
+            Args:
+                - x (Tensor): Input tensor of peptide sequences, encoded as indices.
+                - prev_state (tuple): Initial hidden and cell states for the LSTM.
+
+            Returns:
+                - logits (Tensor): Logits output from the fully connected layer.
+                - state (tuple): Updated hidden and cell states.
+
+        - init_state(batch_size):
+            Initializes the hidden and cell states for the LSTM.
+
+            Args:
+                - batch_size (int): Batch size for the current input.
+
+            Returns:
+                - tuple: Initialized hidden and cell states (zeros).
+
+        - training_step(x, y, criterion, is_training=True):
+            Performs a single training or evaluation step, including forward pass, loss calculation,
+            and accuracy computation.
+
+            Args:
+                - x (Tensor): Input tensor of encoded peptide sequences.
+                - y (Tensor): Target tensor for the ground truth labels.
+                - criterion (callable): Loss function (e.g., CrossEntropyLoss).
+                - is_training (bool): Whether the model is in training mode.
+
+            Returns:
+                - loss (Tensor): Calculated loss for the batch.
+                - accuracy (float): Accuracy metric for the predictions.
+    """
     def __init__(self, input_size):
         super(LSTMPeptides, self).__init__()
 
@@ -208,6 +328,7 @@ class LSTMPeptides(nn.Module):
 
             loss = criterion(y_pred.transpose(1, 2), y)
 
+            #Accuracy calculation
             with torch.no_grad():
                 predicted = y_pred.argmax(dim=2)
                 correct = (predicted == y).float().sum()
@@ -217,6 +338,19 @@ class LSTMPeptides(nn.Module):
 
 
 def train(peptides, model):
+    """    Trains the LSTM-based model on a set of peptide sequences.
+
+    Args:
+        - peptides (list[str]): List of peptide sequences to train on.
+        - model (nn.Module): LSTM model for peptide sequence learning.
+
+    Workflow:
+        1. Prepares data by encoding peptides into tensors using the vocabulary.
+        2. Defines the loss function (CrossEntropyLoss) and optimizer (Adam).
+        3. Divides data into batches of a specified size.
+        4. Iterates over epochs and batches, updating model weights using backpropagation.
+        5. Tracks and logs loss and accuracy for each epoch.
+    """
     model.train()
     vocab = args.vocab
     criterion = nn.CrossEntropyLoss()
@@ -240,6 +374,7 @@ def train(peptides, model):
 
                 optimizer.zero_grad()
 
+                # Forward pass
                 x = batch[:, :-1].to(device)
                 y = batch[:, 1:].to(device)
 
@@ -248,6 +383,7 @@ def train(peptides, model):
                 state_h = state_h.detach()
                 state_c = state_c.detach()
 
+                #Backward pass and optimization
                 loss.backward()
                 optimizer.step()
 
@@ -260,11 +396,6 @@ def train(peptides, model):
         avg_epoch_loss = epoch_loss / num_batches
         avg_epoch_accuracy = epoch_accuracy / num_batches
 
-        try:
-            wandb.log({"accuracy": avg_epoch_accuracy, "loss": avg_epoch_loss})
-        except BrokenPipeError:
-            print("WandB connection lost, skipping logging for this iteration.")
-
         print(f"Epoch [{epoch + 1}/{wandb.config.epochs}], Loss: {avg_epoch_loss}, Accuracy: {avg_epoch_accuracy}")
 
     print('-------End of Training--------\n-----------------------------\n')
@@ -272,6 +403,21 @@ def train(peptides, model):
 
 
 def test(test_data, model, batch_size):
+    """
+    Evaluates the performance of the trained model on a test dataset.
+
+    Args:
+        - test_data (list[str]): List of peptide sequences for testing.
+        - model (nn.Module): The trained LSTM model for evaluation.
+        - batch_size (int): The number of samples per batch for testing.
+
+    Workflow:
+        1. Prepares the test data by encoding peptide sequences into tensors.
+        2. Defines the loss function (CrossEntropyLoss) for evaluating the model.
+        3. Iterates over the test data in batches and computes the model's loss and accuracy.
+        4. Computes the average loss and accuracy across all test batches.
+        5. Outputs the final test accuracy and average loss.
+    """
     vocab = args.vocab
 
     model.eval()
@@ -293,6 +439,7 @@ def test(test_data, model, batch_size):
             x = batch[:, :-1].to(device)
             y = batch[:, 1:].to(device)
 
+            #forward pass and calculate metrics
             loss, accuracy = model.training_step(x, y, criterion, is_training=False)
 
             test_loss += loss.item()
