@@ -14,15 +14,22 @@ do
  
 rm mdrestart xtbmdok gfnff_topo xtbtopo.mol
 
+# Vaguely following protocol in
+# Quantum chemical molecular dynamics and metadynamics simulation of aluminium
+# binding to amyloid-β and related peptides
+# James A. Platts 
+# Published:05 February 2020
+# https://doi.org/10.1098/rsos.191562
+
 cat > md.input << EOF
 \$md
-   temp=310.0      # temperature (K)
-   time=1.0        # simulation length (ps)
+   temp=300.0      # temperature (K)
+   time=10.0        # simulation length (ps)
    step=2.0        # timestep (fs)
    dump=100.0      # Save coordinates every ... (fs)
    shake=1         # SHAKE on H-bonds only
    nvt=true        # NVT ensemble
-   velo=310.0      # Initialize velocities at 310K
+   velo=300.0      # Initialize velocities at ... (K)
 \$end
 
 \$solvation
@@ -39,14 +46,14 @@ cat > metadynamics.input << EOF
 \$md
    restart=true
 
-   temp=310.0
-   time=1.0        # simulation length (ps)
+   temp=300.0
+   time=50.0        # simulation length (ps)
    step=4.0        # timestep (fs)
    dump=50.0       # Save coordinates every ... (fs)
    shake=2         # SHAKE on all non-metal bonds
    hmass=4.0
    nvt=true        # NVT ensemble
-   velo=310.0      # Initialize velocities at 310K
+   velo=300.0      # Initialize velocities at ... (K)
 \$end
 
 \$metadyn
