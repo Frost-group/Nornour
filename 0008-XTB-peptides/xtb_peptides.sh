@@ -47,7 +47,7 @@ cat > md.input << EOF
 \$end
 
 \$solvation
-   solvent=water
+   solvent=${solvent}
    alpb=true
 \$end
 EOF
@@ -87,7 +87,7 @@ cat > metadynamics.input << EOF
 \$end
 
 \$solvation
-   solvent=water
+   solvent=${solvent}
    alpb=true
 \$end
 EOF
