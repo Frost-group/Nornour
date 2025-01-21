@@ -118,6 +118,11 @@ run_umbrella() {
     	conf_num=$((2*i + 1))
     	gmx grompp -f production_umbrella.mdp -c ${peptide}_${membrane}_conf${conf_num}.gro -p ${peptide}_${membrane}.top -r ${peptide}_${membrane}_conf${conf_num}.gro -n ${peptide}_${membrane}.ndx -o ${peptide}_${membrane}_umbrella${i}.tpr -maxwarn 2
     done
+    
+    for i in {0..127}; do
+	gmx mdrun -deffnm ${peptide}_${membrane}_umbrella${i} &
+    done
+    wait
 }
 
 # Function takes input of .dat files, performs weighted histogram analysis and outputs pmf. 
@@ -145,6 +150,7 @@ main() {
     run_equilibration
     run_production
     run_umbrella
+    run_wham
 }
 
 main
