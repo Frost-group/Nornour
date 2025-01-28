@@ -1,0 +1,40 @@
+Using configuration: {'epochs': 15, 'batch_size': 8, 'learning_rate': 6.3e-05, 'layers': 3, 'output_size': 22, 'hidden_size': 256, 'dropout': 0.7}
+longest peptide: 30 AA
+Size of peptides for model: 20
+Total peptides: 14220
+Training set size: 12087
+Test set size: 2133
+Max index: 21, Vocab size: 22
+
+-------Starting Training-------
+_________________________________
+Epoch [1/15]: 100%|██████████████████████████████████████| 1510/1510 [00:36<00:00, 41.20it/s, accuracy=tensor(0.3947), loss=2.09]
+Epoch [1/15], Loss: 2.228702987108799, Accuracy: 0.3466537296772003
+Epoch [2/15]: 100%|██████████████████████████████████████| 1510/1510 [00:35<00:00, 42.81it/s, accuracy=tensor(0.4408), loss=1.75]
+Epoch [2/15], Loss: 2.0089290869946512, Accuracy: 0.3841233551502228
+Epoch [3/15]: 100%|██████████████████████████████████████| 1510/1510 [00:33<00:00, 44.98it/s, accuracy=tensor(0.3618), loss=2.08]
+Epoch [3/15], Loss: 1.9676658071429525, Accuracy: 0.3943752944469452
+Epoch [4/15]: 100%|██████████████████████████████████████| 1510/1510 [00:33<00:00, 44.74it/s, accuracy=tensor(0.3355), loss=2.09]
+Epoch [4/15], Loss: 1.925566029232859, Accuracy: 0.41068726778030396
+Epoch [5/15]: 100%|██████████████████████████████████████| 1510/1510 [00:33<00:00, 45.22it/s, accuracy=tensor(0.3355), loss=2.08]
+Epoch [5/15], Loss: 1.865681175838243, Accuracy: 0.4318710267543793
+Epoch [6/15]:  78%|█████████████████████████████▌        | 1176/1510 [00:27<00:07, 42.64it/s, accuracy=tensor(0.5658), loss=1.56]
+Traceback (most recent call last):
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 492, in <module>
+    train(train_data, model)
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 394, in train
+    optimizer.step()
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/optim/optimizer.py", line 385, in wrapper
+    out = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/optim/optimizer.py", line 76, in _use_grad
+    ret = func(self, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/optim/adam.py", line 166, in step
+    adam(
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/optim/adam.py", line 316, in adam
+    func(params,
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/optim/adam.py", line 380, in _single_tensor_adam
+    grad = grad.add(param, alpha=weight_decay)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

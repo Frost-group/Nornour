@@ -193,6 +193,18 @@ def open_file(filepath):
 
 
 def temperature_sampling(logits, temperature):
+    """
+    Performs temperature-based sampling to select the next token from a set of logits.
+
+    Args:
+        - logits (Tensor): A tensor containing unnormalized log probabilities (logits) for each token.
+        - temperature (float): A scaling factor that controls the randomness of the sampling process.
+          - Higher temperature (>1) increases randomness by flattening the probability distribution.
+          - Lower temperature (<1) makes the distribution sharper, favoring more likely tokens.
+
+    Returns:
+        - next_index (int): The index of the token selected by the sampling process."""
+
     padding_index = 21
     logits[:, padding_index] = float('-inf')
     scaled_logits = logits / temperature
@@ -213,6 +225,37 @@ def load_model(model_path, long_pep):
 
 
 def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
+    """
+    Generates a peptide sequence using an LSTM-based model and temperature-based sampling.
+
+    Args:
+        - model (nn.Module): The trained LSTM model for peptide generation.
+        - seed (str): The initial peptide sequence used as a starting point for generation.
+        - number_aa (int): The total length of the desired peptide sequence, including the seed.
+        - vocab (list): List of amino acids and special tokens (e.g., '_') representing the model's vocabulary.
+        - device (torch.device): The device to run the generation on (e.g., 'cpu' or 'cuda').
+        - temperature (float, optional): Controls randomness in sampling.
+          - Higher values increase randomness, lower values make outputs more deterministic. Default is 1.0.
+
+    Workflow:
+        1. Convert the seed sequence into a list of corresponding indices using the vocabulary.
+        2. Prepare the input tensor from the seed indices and move it to the specified device.
+        3. Initialize the LSTM's hidden and cell states for a single batch.
+        4. Iteratively generate amino acids until the desired sequence length (`number_aa`) is reached:
+           - Use the model to predict the next token's logits.
+           - Apply temperature sampling to select the next token index.
+           - If the padding token (`_`) is selected, terminate the sequence early.
+           - Append the selected token to the generated sequence and update the input tensor.
+        5. Stop the loop if the generated sequence reaches the specified length.
+        6. Return the final generated peptide sequence as a string.
+
+    Returns:
+        - gen_seq (str): The generated peptide sequence.
+
+    Notes:
+        - The function ensures that the padding token ('_') is excluded from the sequence and terminates generation if it is sampled.
+        - This function is particularly useful for generating synthetic peptides with controlled randomness via the `temperature` parameter.
+    """
     to_index = {a: i for i, a in enumerate(vocab)}
     index_to_amino = {i: a for i, a in enumerate(vocab)}
     seed_indices = [to_index[aa] for aa in seed if aa in to_index and to_index[aa] != 21]
@@ -245,6 +288,16 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
 
 
 def seq_to_fasta(peptide: list, file_path: str):
+    """
+    Converts a list of peptide sequences into FASTA format and writes them to a specified file.
+
+    Args:
+        peptide (list): List of peptide sequences to be converted to FASTA format.
+        file_path (str): The path of the file where the FASTA data will be stored.
+
+    Returns:
+        None: The function writes the FASTA data to the specified file and prints a confirmation message.
+    """
     with open(file_path, 'w') as file:
         for i, seq in enumerate(peptide):
             # Format each peptide into FASTA format
@@ -254,6 +307,22 @@ def seq_to_fasta(peptide: list, file_path: str):
 
 
 def main():
+    """
+    Main function to generate new peptide sequences and save them in FASTA format.
+
+    This function loads a dataset of existing peptides, generates new peptide sequences using
+    a trained model, and compares the generated sequences with the dataset to ensure uniqueness.
+    The function uses a seed sequence and generates peptides of random lengths within a specified
+    range. It removes any generated peptides that already exist in the dataset before saving the
+    unique ones to a FASTA file.
+
+    Args:
+        None: The function takes no arguments and uses global configurations from `args`.
+
+    Returns:
+        None: The function prints information about the generated peptides, including their lengths,
+        uniqueness, and writes them to a FASTA file.
+    """
 
     peptides, long_pep = open_file(args.dataset_path)
 

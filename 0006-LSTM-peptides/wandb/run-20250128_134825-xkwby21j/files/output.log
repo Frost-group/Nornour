@@ -1,0 +1,16 @@
+Using configuration: {'epochs': 50, 'batch_size': 8, 'learning_rate': 0.00063, 'layers': 2, 'output_size': 22, 'hidden_size': 256, 'dropout': 0.7}
+longest peptide: 7 AA
+Size of peptides for model: 10
+Total peptides: 10
+Training set size: 8
+Test set size: 2
+Traceback (most recent call last):
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 485, in <module>
+    train(train_data, model)
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 367, in train
+    inp_peptides, _ = to_tensor(peptides, vocab)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 187, in to_tensor
+    return torch.tensor(result), to_index
+           ^^^^^^^^^^^^^^^^^^^^
+ValueError: expected sequence of length 1 at dim 1 (got 2)

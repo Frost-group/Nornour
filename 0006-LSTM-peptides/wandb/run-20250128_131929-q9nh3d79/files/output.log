@@ -1,0 +1,10 @@
+Using configuration: {'epochs': 50, 'batch_size': 8, 'learning_rate': 0.00063, 'layers': 2, 'output_size': 22, 'hidden_size': 256, 'dropout': 0.7}
+File not found: ../0003b-RW-Lexicon/RW_lexicon.dat--save_model
+Traceback (most recent call last):
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 465, in <module>
+    pep_padded = padding(peptides, long_pep)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 124, in padding
+    for i, pep in enumerate(peptides):
+                  ^^^^^^^^^^^^^^^^^^^
+TypeError: 'NoneType' object is not iterable

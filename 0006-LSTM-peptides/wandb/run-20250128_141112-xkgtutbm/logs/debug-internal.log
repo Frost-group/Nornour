@@ -1,0 +1,8 @@
+{"time":"2025-01-28T14:11:12.15946Z","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2025-01-28T14:11:12.159505Z","level":"INFO","msg":"created symlink","path":"/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/wandb/run-20250128_141112-xkgtutbm/logs/debug-core.log"}
+{"time":"2025-01-28T14:11:12.269644Z","level":"INFO","msg":"created new stream","id":"xkgtutbm"}
+{"time":"2025-01-28T14:11:12.269688Z","level":"INFO","msg":"stream: started","id":"xkgtutbm"}
+{"time":"2025-01-28T14:11:12.269703Z","level":"INFO","msg":"handler: started","stream_id":"xkgtutbm"}
+{"time":"2025-01-28T14:11:12.269745Z","level":"INFO","msg":"sender: started","stream_id":"xkgtutbm"}
+{"time":"2025-01-28T14:11:12.269789Z","level":"INFO","msg":"writer: Do: started","stream_id":"xkgtutbm"}
+{"time":"2025-01-28T14:11:12.596761Z","level":"INFO","msg":"Starting system monitor"}

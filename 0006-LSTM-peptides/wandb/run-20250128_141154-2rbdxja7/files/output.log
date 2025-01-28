@@ -1,0 +1,49 @@
+Using configuration: {'epochs': 50, 'batch_size': 8, 'learning_rate': 0.00063, 'layers': 2, 'output_size': 22, 'hidden_size': 256, 'dropout': 0.7}
+Total peptides: 254
+Training set size: 215
+Test set size: 39
+Max index: 21, Vocab size: 22
+
+-------Starting Training-------
+_________________________________
+Epoch [1/50]: 100%|██████████████████████████████████████████| 26/26 [00:00<00:00, 82.79it/s, accuracy=tensor(0.2917), loss=1.22]
+Epoch [1/50], Loss: 1.9063375271283662, Accuracy: 0.3854166865348816
+Epoch [2/50]: 100%|█████████████████████████████████████████| 26/26 [00:00<00:00, 102.91it/s, accuracy=tensor(0.4375), loss=1.08]
+Epoch [2/50], Loss: 1.0524706175694098, Accuracy: 0.4479166269302368
+Epoch [3/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 101.43it/s, accuracy=tensor(0.5833), loss=0.974]
+Epoch [3/50], Loss: 0.9326606622109046, Accuracy: 0.49919870495796204
+Epoch [4/50]: 100%|█████████████████████████████████████████| 26/26 [00:00<00:00, 99.85it/s, accuracy=tensor(0.3542), loss=0.975]
+Epoch [4/50], Loss: 0.9185099441271561, Accuracy: 0.5056089758872986
+Epoch [5/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 102.30it/s, accuracy=tensor(0.5625), loss=0.844]
+Epoch [5/50], Loss: 0.886015901198754, Accuracy: 0.5208333730697632
+Epoch [6/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 104.24it/s, accuracy=tensor(0.4792), loss=0.845]
+Epoch [6/50], Loss: 0.8618368047934312, Accuracy: 0.5168270468711853
+Epoch [7/50]:  50%|████████████████████▌                    | 13/26 [00:00<00:00, 99.94it/s, accuracy=tensor(0.4792), loss=0.826]
+Traceback (most recent call last):
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 477, in <module>
+    train(train_data, model)
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 387, in train
+    loss, accuracy = model.training_step(x, y, criterion)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 333, in training_step
+    y_pred, (state_h, state_c) = self(x, (state_h, state_c))
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/LSTM-peptide-model.py", line 316, in forward
+    output, state = self.lstm(embed, prev_state)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/LLM2/lib/python3.11/site-packages/torch/nn/modules/rnn.py", line 878, in forward
+    result = _VF.lstm(input, hx, self._flat_weights, self.bias, self.num_layers,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

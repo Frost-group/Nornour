@@ -1,0 +1,16 @@
+{"time":"2025-01-28T14:15:14.798819Z","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2025-01-28T14:15:14.798858Z","level":"INFO","msg":"created symlink","path":"/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/wandb/run-20250128_141514-u7inw5av/logs/debug-core.log"}
+{"time":"2025-01-28T14:15:14.907442Z","level":"INFO","msg":"created new stream","id":"u7inw5av"}
+{"time":"2025-01-28T14:15:14.907483Z","level":"INFO","msg":"stream: started","id":"u7inw5av"}
+{"time":"2025-01-28T14:15:14.9075Z","level":"INFO","msg":"writer: Do: started","stream_id":"u7inw5av"}
+{"time":"2025-01-28T14:15:14.907574Z","level":"INFO","msg":"sender: started","stream_id":"u7inw5av"}
+{"time":"2025-01-28T14:15:14.907545Z","level":"INFO","msg":"handler: started","stream_id":"u7inw5av"}
+{"time":"2025-01-28T14:15:15.168026Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-28T14:15:29.077253Z","level":"INFO","msg":"stream: closing","id":"u7inw5av"}
+{"time":"2025-01-28T14:15:29.07746Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-01-28T14:15:29.078762Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-01-28T14:15:30.354942Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-01-28T14:15:30.534989Z","level":"INFO","msg":"handler: closed","stream_id":"u7inw5av"}
+{"time":"2025-01-28T14:15:30.535003Z","level":"INFO","msg":"writer: Close: closed","stream_id":"u7inw5av"}
+{"time":"2025-01-28T14:15:30.535017Z","level":"INFO","msg":"sender: closed","stream_id":"u7inw5av"}
+{"time":"2025-01-28T14:15:30.535147Z","level":"INFO","msg":"stream: closed","id":"u7inw5av"}

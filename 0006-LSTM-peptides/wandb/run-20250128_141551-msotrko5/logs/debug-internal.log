@@ -1,0 +1,16 @@
+{"time":"2025-01-28T14:15:51.095819Z","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2025-01-28T14:15:51.095943Z","level":"INFO","msg":"created symlink","path":"/Users/igorgonteri/Desktop/Nornour/0006-LSTM-peptides/wandb/run-20250128_141551-msotrko5/logs/debug-core.log"}
+{"time":"2025-01-28T14:15:51.205249Z","level":"INFO","msg":"created new stream","id":"msotrko5"}
+{"time":"2025-01-28T14:15:51.205296Z","level":"INFO","msg":"stream: started","id":"msotrko5"}
+{"time":"2025-01-28T14:15:51.20533Z","level":"INFO","msg":"writer: Do: started","stream_id":"msotrko5"}
+{"time":"2025-01-28T14:15:51.205355Z","level":"INFO","msg":"handler: started","stream_id":"msotrko5"}
+{"time":"2025-01-28T14:15:51.205422Z","level":"INFO","msg":"sender: started","stream_id":"msotrko5"}
+{"time":"2025-01-28T14:15:51.573721Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-28T14:16:04.262816Z","level":"INFO","msg":"stream: closing","id":"msotrko5"}
+{"time":"2025-01-28T14:16:04.262861Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-01-28T14:16:04.263306Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-01-28T14:16:05.275707Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-01-28T14:16:05.480624Z","level":"INFO","msg":"handler: closed","stream_id":"msotrko5"}
+{"time":"2025-01-28T14:16:05.48064Z","level":"INFO","msg":"writer: Close: closed","stream_id":"msotrko5"}
+{"time":"2025-01-28T14:16:05.480655Z","level":"INFO","msg":"sender: closed","stream_id":"msotrko5"}
+{"time":"2025-01-28T14:16:05.480783Z","level":"INFO","msg":"stream: closed","id":"msotrko5"}

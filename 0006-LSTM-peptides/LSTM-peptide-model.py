@@ -27,6 +27,7 @@ class LSTMArgs:
         self.hidden_size = 256
         self.layers = 2
         self.dropout = 0.7
+        self.max_length = 0
         self.vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
                       'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
         self.save_model = False
@@ -43,6 +44,7 @@ def parse_args():
     parser.add_argument('--hidden_size', type=int, default=256, help='Hidden layer size (default: 128)')
     parser.add_argument('--layers', type=int, default=2, help='Number of LSTM layers (default: 3)')
     parser.add_argument('--dropout', type=float, default=0.7, help='Dropout rate (default: 0.5)')
+    parser.add_argument('--max_length', type=int, default=0, help='Maximum peptide length')
     parser.add_argument('--vocabulary', type=str, default= "RHKDESTNQCUGPAILMFWYV_", help='List of amino acids and padding index')
     parser.add_argument('--save_model', type=bool, default=False, help='Save the trained model (default: False)')
 
@@ -58,6 +60,7 @@ def parse_args():
     lstm_args.layers = args.layers
     lstm_args.dropout = args.dropout
     lstm_args.vocab = list(args.vocabulary)
+    lstm_args.max_length = args.max_length
     lstm_args.save_model = args.save_model
 
     return lstm_args
@@ -76,7 +79,7 @@ config = {
     }
 
 run = wandb.init(
-        project='LSTM-peptides',
+        project='LSTM-peptides_DBAASP',
         config=config
     )
 
@@ -126,6 +129,9 @@ def padding(peptides, long_pep):
 
         if pad_length > 0:
             peptides[i] = pep.strip() + '_' * pad_length
+
+        if pad_length < 0:
+            peptides[i] = peptides[i][:long_pep]
 
     return peptides
 
@@ -390,11 +396,20 @@ def train(peptides, model):
                 epoch_loss += loss.item()
                 epoch_accuracy += accuracy
 
+                wandb.log({
+                    "epoch": epoch + 1,
+                    "loss": loss,
+                    "accuracy": accuracy
+                })
+
                 pbar.update(1)
                 pbar.set_postfix(loss=loss.item(), accuracy=accuracy)
 
+
         avg_epoch_loss = epoch_loss / num_batches
         avg_epoch_accuracy = epoch_accuracy / num_batches
+
+
 
         print(f"Epoch [{epoch + 1}/{wandb.config.epochs}], Loss: {avg_epoch_loss}, Accuracy: {avg_epoch_accuracy}")
 
@@ -462,7 +477,14 @@ if __name__ == "__main__":
     dataset = args.dataset_path
     peptides, long_pep = open_file(dataset)
 
-    pep_padded = padding(peptides, long_pep)
+    print(f'longest peptide: {long_pep} AA')
+
+    if not args.max_length:
+        pep_padded = padding(peptides, long_pep)
+        print(f'Size of peptides for model: {long_pep}')
+    else:
+        pep_padded = padding(peptides, args.max_length)
+        print(f'Size of peptides for model: {args.max_length}')
 
     train_data, test_data = split_data(pep_padded)
 
@@ -478,4 +500,23 @@ if __name__ == "__main__":
         print(f"Model saved to {model_path}")
 
     print('Command to run for peptide generation: \n')
-    print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path lstm_peptides_model.pt --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 100 --min_length 2 --max_length 15 --seed RWW""")
+    print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path lstm_peptides_model.pt --output_path generation_output.fasta --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 100 --min_length 2 --max_length 20 --seed 'WLKL'""")
+
+"""
+Command to run code:
+
+python LSTM-peptide-model.py  --dataset_path ../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides --output_size 22 --epochs 15 --batch_size 8 --learning_rate 0.000063 --hidden_size 256 --layers 1 --dropout 0.7 --max_length 20 --vocabulary "RHKDESTNQCUGPAILMFWYV_"  --save_model True
+"""
+
+"""
+Optimal hyperparam RW_lexicon:
+
+--output_size 22
+--epochs 20
+--batch_size 8
+--learning_rate 0.00063
+--hidden_size 256
+--layers 2
+--dropout 0.7
+
+"""

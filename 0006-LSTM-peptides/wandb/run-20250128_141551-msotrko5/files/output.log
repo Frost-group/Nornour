@@ -1,0 +1,125 @@
+Using configuration: {'epochs': 50, 'batch_size': 8, 'learning_rate': 0.00063, 'layers': 2, 'output_size': 22, 'hidden_size': 256, 'dropout': 0.7}
+['R', 'RR', 'RRR', 'RRRR', 'RRRRR', 'RRRRRR', 'RRRRRRR', 'RRRRRRW', 'RRRRRW', 'RRRRRWR', 'RRRRRWW', 'RRRRW', 'RRRRWR', 'RRRRWRR', 'RRRRWRW', 'RRRRWW', 'RRRRWWR', 'RRRRWWW', 'RRRW', 'RRRWR', 'RRRWRR', 'RRRWRRR', 'RRRWRRW', 'RRRWRW', 'RRRWRWR', 'RRRWRWW', 'RRRWW', 'RRRWWR', 'RRRWWRR', 'RRRWWRW', 'RRRWWW', 'RRRWWWR', 'RRRWWWW', 'RRW', 'RRWR', 'RRWRR', 'RRWRRR', 'RRWRRRR', 'RRWRRRW', 'RRWRRW', 'RRWRRWR', 'RRWRRWW', 'RRWRW', 'RRWRWR', 'RRWRWRR', 'RRWRWRW', 'RRWRWW', 'RRWRWWR', 'RRWRWWW', 'RRWW', 'RRWWR', 'RRWWRR', 'RRWWRRR', 'RRWWRRW', 'RRWWRW', 'RRWWRWR', 'RRWWRWW', 'RRWWW', 'RRWWWR', 'RRWWWRR', 'RRWWWRW', 'RRWWWW', 'RRWWWWR', 'RRWWWWW', 'RW', 'RWR', 'RWRR', 'RWRRR', 'RWRRRR', 'RWRRRRR', 'RWRRRRW', 'RWRRRW', 'RWRRRWR', 'RWRRRWW', 'RWRRW', 'RWRRWR', 'RWRRWRR', 'RWRRWRW', 'RWRRWW', 'RWRRWWR', 'RWRRWWW', 'RWRW', 'RWRWR', 'RWRWRR', 'RWRWRRR', 'RWRWRRW', 'RWRWRW', 'RWRWRWR', 'RWRWRWW', 'RWRWW', 'RWRWWR', 'RWRWWRR', 'RWRWWRW', 'RWRWWW', 'RWRWWWR', 'RWRWWWW', 'RWW', 'RWWR', 'RWWRR', 'RWWRRR', 'RWWRRRR', 'RWWRRRW', 'RWWRRW', 'RWWRRWR', 'RWWRRWW', 'RWWRW', 'RWWRWR', 'RWWRWRR', 'RWWRWRW', 'RWWRWW', 'RWWRWWR', 'RWWRWWW', 'RWWW', 'RWWWR', 'RWWWRR', 'RWWWRRR', 'RWWWRRW', 'RWWWRW', 'RWWWRWR', 'RWWWRWW', 'RWWWW', 'RWWWWR', 'RWWWWRR', 'RWWWWRW', 'RWWWWW', 'RWWWWWR', 'RWWWWWW', 'W', 'WR', 'WRR', 'WRRR', 'WRRRR', 'WRRRRR', 'WRRRRRR', 'WRRRRRW', 'WRRRRW', 'WRRRRWR', 'WRRRRWW', 'WRRRW', 'WRRRWR', 'WRRRWRR', 'WRRRWRW', 'WRRRWW', 'WRRRWWR', 'WRRRWWW', 'WRRW', 'WRRWR', 'WRRWRR', 'WRRWRRR', 'WRRWRRW', 'WRRWRW', 'WRRWRWR', 'WRRWRWW', 'WRRWW', 'WRRWWR', 'WRRWWRR', 'WRRWWRW', 'WRRWWW', 'WRRWWWR', 'WRRWWWW', 'WRW', 'WRWR', 'WRWRR', 'WRWRRR', 'WRWRRRR', 'WRWRRRW', 'WRWRRW', 'WRWRRWR', 'WRWRRWW', 'WRWRW', 'WRWRWR', 'WRWRWRR', 'WRWRWRW', 'WRWRWW', 'WRWRWWR', 'WRWRWWW', 'WRWW', 'WRWWR', 'WRWWRR', 'WRWWRRR', 'WRWWRRW', 'WRWWRW', 'WRWWRWR', 'WRWWRWW', 'WRWWW', 'WRWWWR', 'WRWWWRR', 'WRWWWRW', 'WRWWWW', 'WRWWWWR', 'WRWWWWW', 'WW', 'WWR', 'WWRR', 'WWRRR', 'WWRRRR', 'WWRRRRR', 'WWRRRRW', 'WWRRRW', 'WWRRRWR', 'WWRRRWW', 'WWRRW', 'WWRRWR', 'WWRRWRR', 'WWRRWRW', 'WWRRWW', 'WWRRWWR', 'WWRRWWW', 'WWRW', 'WWRWR', 'WWRWRR', 'WWRWRRR', 'WWRWRRW', 'WWRWRW', 'WWRWRWR', 'WWRWRWW', 'WWRWW', 'WWRWWR', 'WWRWWRR', 'WWRWWRW', 'WWRWWW', 'WWRWWWR', 'WWRWWWW', 'WWW', 'WWWR', 'WWWRR', 'WWWRRR', 'WWWRRRR', 'WWWRRRW', 'WWWRRW', 'WWWRRWR', 'WWWRRWW', 'WWWRW', 'WWWRWR', 'WWWRWRR', 'WWWRWRW', 'WWWRWW', 'WWWRWWR', 'WWWRWWW', 'WWWW', 'WWWWR', 'WWWWRR', 'WWWWRRR', 'WWWWRRW', 'WWWWRW', 'WWWWRWR', 'WWWWRWW', 'WWWWW', 'WWWWWR', 'WWWWWRR', 'WWWWWRW', 'WWWWWW', 'WWWWWWR', 'WWWWWWW']
+longest peptide: 7 AA
+Size of peptides for model: 4
+Total peptides: 254
+Training set size: 215
+Test set size: 39
+Max index: 21, Vocab size: 22
+
+-------Starting Training-------
+_________________________________
+Epoch [1/50]: 100%|██████████████████████████████████████████| 26/26 [00:00<00:00, 87.03it/s, accuracy=tensor(0.3333), loss=1.25]
+Epoch [1/50], Loss: 1.9583037999960093, Accuracy: 0.4711538553237915
+Epoch [2/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 100.95it/s, accuracy=tensor(0.4583), loss=0.876]
+Epoch [2/50], Loss: 0.9658676248330337, Accuracy: 0.5128204822540283
+Epoch [3/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 104.88it/s, accuracy=tensor(0.7917), loss=0.608]
+Epoch [3/50], Loss: 0.8831390532163473, Accuracy: 0.5288462042808533
+Epoch [4/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 120.35it/s, accuracy=tensor(0.6667), loss=0.689]
+Epoch [4/50], Loss: 0.8704935495670025, Accuracy: 0.516025722026825
+Epoch [5/50]: 100%|█████████████████████████████████████████| 26/26 [00:00<00:00, 119.66it/s, accuracy=tensor(0.5000), loss=1.01]
+Epoch [5/50], Loss: 0.8520210087299347, Accuracy: 0.5352564454078674
+Epoch [6/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 122.40it/s, accuracy=tensor(0.6667), loss=0.698]
+Epoch [6/50], Loss: 0.8084058807446406, Accuracy: 0.5576924085617065
+Epoch [7/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 122.88it/s, accuracy=tensor(0.5000), loss=0.714]
+Epoch [7/50], Loss: 0.8124768986151769, Accuracy: 0.5464743375778198
+Epoch [8/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 123.50it/s, accuracy=tensor(0.6667), loss=0.675]
+Epoch [8/50], Loss: 0.7893376671350919, Accuracy: 0.5496794581413269
+Epoch [9/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 128.01it/s, accuracy=tensor(0.5833), loss=0.759]
+Epoch [9/50], Loss: 0.7869478257802817, Accuracy: 0.533653736114502
+Epoch [10/50]: 100%|███████████████████████████████████████████| 26/26 [00:00<00:00, 126.82it/s, accuracy=tensor(0.3750), loss=1]
+Epoch [10/50], Loss: 0.789321956726221, Accuracy: 0.5048076510429382
+Epoch [11/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 125.47it/s, accuracy=tensor(0.3750), loss=0.936]
+Epoch [11/50], Loss: 0.7701075581403879, Accuracy: 0.5625000596046448
+Epoch [12/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 59.86it/s, accuracy=tensor(0.5833), loss=0.681]
+Epoch [12/50], Loss: 0.7609109259568728, Accuracy: 0.557692289352417
+Epoch [13/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 51.50it/s, accuracy=tensor(0.6250), loss=0.666]
+Epoch [13/50], Loss: 0.7466318286382235, Accuracy: 0.5817307233810425
+Epoch [14/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 104.10it/s, accuracy=tensor(0.5000), loss=0.885]
+Epoch [14/50], Loss: 0.7853075105410355, Accuracy: 0.5208333730697632
+Epoch [15/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 104.25it/s, accuracy=tensor(0.6250), loss=0.642]
+Epoch [15/50], Loss: 0.7589537982757275, Accuracy: 0.557692289352417
+Epoch [16/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 104.74it/s, accuracy=tensor(0.3750), loss=0.89]
+Epoch [16/50], Loss: 0.7679048088880686, Accuracy: 0.5336537957191467
+Epoch [17/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 124.38it/s, accuracy=tensor(0.6667), loss=0.649]
+Epoch [17/50], Loss: 0.743874517770914, Accuracy: 0.5737179517745972
+Epoch [18/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 126.35it/s, accuracy=tensor(0.5417), loss=0.74]
+Epoch [18/50], Loss: 0.7702617049217224, Accuracy: 0.5496795177459717
+Epoch [19/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 124.72it/s, accuracy=tensor(0.5417), loss=0.805]
+Epoch [19/50], Loss: 0.7504357282931988, Accuracy: 0.5464743375778198
+Epoch [20/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 126.63it/s, accuracy=tensor(0.5417), loss=0.832]
+Epoch [20/50], Loss: 0.7529738522492923, Accuracy: 0.5416667461395264
+Epoch [21/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 125.74it/s, accuracy=tensor(0.5417), loss=0.659]
+Epoch [21/50], Loss: 0.7498587209444779, Accuracy: 0.567307710647583
+Epoch [22/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 127.83it/s, accuracy=tensor(0.5417), loss=0.742]
+Epoch [22/50], Loss: 0.7501233861996577, Accuracy: 0.5512820482254028
+Epoch [23/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 126.23it/s, accuracy=tensor(0.5833), loss=0.741]
+Epoch [23/50], Loss: 0.7598266120140369, Accuracy: 0.5304486751556396
+Epoch [24/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 126.65it/s, accuracy=tensor(0.6250), loss=0.701]
+Epoch [24/50], Loss: 0.758743194433359, Accuracy: 0.5320513248443604
+Epoch [25/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 129.45it/s, accuracy=tensor(0.3333), loss=0.744]
+Epoch [25/50], Loss: 0.7544373938670526, Accuracy: 0.5144230127334595
+Epoch [26/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 128.67it/s, accuracy=tensor(0.4583), loss=0.859]
+Epoch [26/50], Loss: 0.7611757723184732, Accuracy: 0.5336538553237915
+Epoch [27/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 111.20it/s, accuracy=tensor(0.4583), loss=0.839]
+Epoch [27/50], Loss: 0.7635299678032215, Accuracy: 0.548076868057251
+Epoch [28/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 91.99it/s, accuracy=tensor(0.5833), loss=0.655]
+Epoch [28/50], Loss: 0.7516293181822851, Accuracy: 0.5352564454078674
+Epoch [29/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 115.70it/s, accuracy=tensor(0.5833), loss=0.711]
+Epoch [29/50], Loss: 0.744078530715062, Accuracy: 0.5320512056350708
+Epoch [30/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 118.87it/s, accuracy=tensor(0.6250), loss=0.638]
+Epoch [30/50], Loss: 0.7503027824255136, Accuracy: 0.5112180113792419
+Epoch [31/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 112.73it/s, accuracy=tensor(0.7917), loss=0.665]
+Epoch [31/50], Loss: 0.7568403918009537, Accuracy: 0.5400640368461609
+Epoch [32/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 93.96it/s, accuracy=tensor(0.6667), loss=0.678]
+Epoch [32/50], Loss: 0.7396319760726049, Accuracy: 0.5721153616905212
+Epoch [33/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 116.40it/s, accuracy=tensor(0.6250), loss=0.707]
+Epoch [33/50], Loss: 0.7465600417210505, Accuracy: 0.5432692170143127
+Epoch [34/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 124.01it/s, accuracy=tensor(0.6250), loss=0.915]
+Epoch [34/50], Loss: 0.7421987629853762, Accuracy: 0.5448718667030334
+Epoch [35/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 124.29it/s, accuracy=tensor(0.5000), loss=0.755]
+Epoch [35/50], Loss: 0.7445806264877319, Accuracy: 0.5384615659713745
+Epoch [36/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 125.32it/s, accuracy=tensor(0.5000), loss=0.641]
+Epoch [36/50], Loss: 0.7468262154322404, Accuracy: 0.5512820482254028
+Epoch [37/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 123.95it/s, accuracy=tensor(0.6667), loss=0.71]
+Epoch [37/50], Loss: 0.7383222373632284, Accuracy: 0.5689102411270142
+Epoch [38/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 127.01it/s, accuracy=tensor(0.5000), loss=0.811]
+Epoch [38/50], Loss: 0.7377075140292828, Accuracy: 0.5384615659713745
+Epoch [39/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 123.38it/s, accuracy=tensor(0.6250), loss=0.683]
+Epoch [39/50], Loss: 0.7365092910253085, Accuracy: 0.5416667461395264
+Epoch [40/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 123.23it/s, accuracy=tensor(0.5417), loss=0.956]
+Epoch [40/50], Loss: 0.7512695376689618, Accuracy: 0.5448718667030334
+Epoch [41/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 112.67it/s, accuracy=tensor(0.5417), loss=0.855]
+Epoch [41/50], Loss: 0.7596923685990847, Accuracy: 0.5224359631538391
+Epoch [42/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 110.27it/s, accuracy=tensor(0.6667), loss=0.684]
+Epoch [42/50], Loss: 0.7416803401250106, Accuracy: 0.5608974695205688
+Epoch [43/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 92.57it/s, accuracy=tensor(0.5833), loss=0.681]
+Epoch [43/50], Loss: 0.7581868400940528, Accuracy: 0.548076868057251
+Epoch [44/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 113.28it/s, accuracy=tensor(0.4167), loss=0.716]
+Epoch [44/50], Loss: 0.7380615633267623, Accuracy: 0.5336537957191467
+Epoch [45/50]: 100%|████████████████████████████████████████| 26/26 [00:00<00:00, 112.20it/s, accuracy=tensor(0.5417), loss=0.74]
+Epoch [45/50], Loss: 0.744783681172591, Accuracy: 0.5705127716064453
+Epoch [46/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 114.20it/s, accuracy=tensor(0.3333), loss=0.887]
+Epoch [46/50], Loss: 0.7510348764749674, Accuracy: 0.5400640964508057
+Epoch [47/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 120.54it/s, accuracy=tensor(0.4167), loss=0.716]
+Epoch [47/50], Loss: 0.7498319722138919, Accuracy: 0.5288461446762085
+Epoch [48/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 109.54it/s, accuracy=tensor(0.5000), loss=0.722]
+Epoch [48/50], Loss: 0.7458350681341611, Accuracy: 0.5416666865348816
+Epoch [49/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 114.09it/s, accuracy=tensor(0.6667), loss=0.659]
+Epoch [49/50], Loss: 0.7414860060581794, Accuracy: 0.5737179517745972
+Epoch [50/50]: 100%|███████████████████████████████████████| 26/26 [00:00<00:00, 114.81it/s, accuracy=tensor(0.5000), loss=0.841]
+Epoch [50/50], Loss: 0.7606450663163111, Accuracy: 0.5224359035491943
+-------End of Training--------
+-----------------------------
+
+------Starting Testing------
+-----------------------------
+Test Error:
+ Accuracy: 19.79%, Avg loss: 1.8979
+
+------End of testing--------
+-----------------------------
+Model saved to lstm_peptides_model.pt
+Command to run for peptide generation:
+
+python LSTM-peptides-generation.py --dataset_path /Users/igorgonteri/Desktop/Nornour/0003b-RW-Lexicon/RW_lexicon.dat --model_path lstm_peptides_model.pt --output_size 22 --epochs 50 --batch_size 8 --learning_rate 0.00063 --hidden_size 256 --layers 2 --dropout 0.7 --temperature 1.0 --num_sequences 100 --min_length 2 --max_length 15 --seed RWW
