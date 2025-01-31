@@ -2,6 +2,8 @@ from Bio.SeqUtils.ProtParam import ProteinAnalysis
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 
 
 def fasta_to_df(filepath):
@@ -17,6 +19,15 @@ def fasta_to_df(filepath):
     peptides_df = peptides_df[~peptides_df['Sequence'].str.contains('U')]  # "~" negates the condition
 
     return peptides_df
+
+
+def df_to_fasta(filepath, df):
+    with open(filepath, 'w') as fasta_file:
+        for i, seq in enumerate(df['Sequence']):
+            # Format each peptide into FASTA format
+            fasta_entry = f'>peptide_{i + 1}\n{seq}\n'
+            fasta_file.write(fasta_entry)  # Write each FASTA entry to the file
+    print(f'Peptides stored in FASTA format at: {filepath}')
 
 
 def plot_helical_wheel(angles, n_residues, peptide):
@@ -83,10 +94,12 @@ def amphiphilicity_calculator(peptide, plot=False):
 
     return H_star
 
+
 def hydrophobicity_calculator(peptide):
     X = ProteinAnalysis(peptide)
     hydrophobicity = X.gravy(scale='KyteDoolitle')
     return hydrophobicity
+
 
 def charge_calculator(peptide):
     X = ProteinAnalysis(peptide)
@@ -94,20 +107,65 @@ def charge_calculator(peptide):
     return charge
 
 
-filepath = 'generation_output.fasta'
-peptide_df = fasta_to_df(filepath)
-peptide_df['Hydrophobic index']= peptide_df['Sequence'].apply(lambda x: hydrophobicity_calculator(x))
-peptide_df['Charge (pH 7.4)']= peptide_df['Sequence'].apply(lambda x: charge_calculator(x))
-peptide_df['Amphiphilicity']= peptide_df['Sequence'].apply(lambda x: amphiphilicity_calculator(x, False))
+def amp_sorter(fasta_file_input, fasta_file_output):
+    peptide_df = fasta_to_df(fasta_file_input)
+    peptide_df['Hydrophobic index'] = peptide_df['Sequence'].apply(lambda x: hydrophobicity_calculator(x))
+    peptide_df['Charge (pH 7.4)'] = peptide_df['Sequence'].apply(lambda x: charge_calculator(x))
+    peptide_df['Amphiphilicity'] = peptide_df['Sequence'].apply(lambda x: amphiphilicity_calculator(x, False))
 
-print(peptide_df)
+    peptide_df = peptide_df.query("`Hydrophobic index` > 0.5")
+    peptide_df = peptide_df.query("`Charge (pH 7.4)` > 2")
+    peptide_df = peptide_df.query("`Charge (pH 7.4)` < 5")
+    peptide_df = peptide_df.query("`Amphiphilicity` > 0.33")
 
-peptide_df = peptide_df.query("`Hydrophobic index` > 0.5")
-peptide_df = peptide_df.query("`Charge (pH 7.4)` > 2")
-peptide_df = peptide_df.query("`Charge (pH 7.4)` < 5")
-peptide_df = peptide_df.query("`Amphiphilicity` > 0.33")
+    df_to_fasta(fasta_file_output, peptide_df)
+    output_df = fasta_to_df(output_filepath)
 
-print(peptide_df)
+    return output_df
+
+
+def amp_proba_predictor(filepath):
+    url = 'http://www.camp3.bicnirrh.res.in/predict/hii.php'
+
+    files = {'userfile': open(filepath, 'rb')}
+    payload = {'algo[]': 'rf'}
+    r = requests.post(url, data=payload, files=files)
+
+    soup = BeautifulSoup(r.text, 'html.parser')
+    table = soup.find('table')
+    values = []
+
+    if table:
+        rows = table.find_all('tr')[5:]
+        values = []
+
+        for row in rows:
+            cells = row.find_all('td')
+            if len(cells) > 2:
+                try:
+                    value =  float(cells[2].text.strip())
+                    values.append(value)
+                except ValueError:
+                    pass
+
+    pred_AMP_proba = [v for v in values if v is not None]
+    return pred_AMP_proba
+
+
+input_filepath = '../0006b-LSTM-data/generation_peptides.fasta'
+output_filepath = '../0006b-LSTM-data/sorted_peptides.fasta'
+sec_output_file = '../0006b-LSTM-data/potential_amp.fasta'
+
+output_df = amp_sorter(input_filepath, output_filepath)
+pred_AMP_proba = amp_proba_predictor(output_filepath)
+
+output_df['AMP probability'] = pd.DataFrame(pred_AMP_proba)
+
+peptide_df_sorted = output_df.sort_values(by='AMP probability', ascending=False)
+print(peptide_df_sorted)
+
+df_to_fasta(sec_output_file, peptide_df_sorted[0:20])
+
 
 
 
