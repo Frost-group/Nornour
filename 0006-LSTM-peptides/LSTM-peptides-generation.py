@@ -26,7 +26,7 @@ class LSTMArgs:
         self.num_sequences = 100
         self.min_length = 2
         self.max_length = 15
-        self.seed = ['R', 'W', 'W']
+        self.seed = 'r'
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and generate peptides using LSTM model')
@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument('--num_sequences', type=int, default=100, help='Number of unique sequences to generate')
     parser.add_argument('--min_length', type=int, default=2, help='Minimum peptide length')
     parser.add_argument('--max_length', type=int, default=15, help='Maximum peptide length')
-    parser.add_argument('--seed', type=str, default='RWW', help="Seed sequence for generation")
+    parser.add_argument('--seed', type=str, default='r', help="Seed sequence for generation, put 'r' for random seed generation")
     args = parser.parse_args()
 
     return args
@@ -265,7 +265,12 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
     state_h, state_c = model.init_state(1)
     state_h, state_c = state_h.to(device), state_c.to(device)
 
-    gen_seq = seed
+    seed_AA = ['W', 'L', 'K', 'R', 'I', 'F', 'V']
+
+    if seed == 'r':
+        gen_seq = ''.join(random.choices(seed_AA, k=4))
+    else:
+        gen_seq = seed
 
     for _ in range(number_aa - len(seed)):  # Ensures the loop stops at the specified length
         with torch.no_grad():
