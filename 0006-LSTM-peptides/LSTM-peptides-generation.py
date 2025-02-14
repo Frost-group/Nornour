@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import argparse
 import random
 
-#Need to add biases to the generation: Remove point for certain bad AA and for negatively charged AA
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
@@ -256,23 +255,30 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
         - The function ensures that the padding token ('_') is excluded from the sequence and terminates generation if it is sampled.
         - This function is particularly useful for generating synthetic peptides with controlled randomness via the `temperature` parameter.
     """
+    seed_AA = ['W', 'L', 'K', 'R', 'I', 'F', 'V']
+
+    if seed == 'r':
+        gen_seq = ''.join(random.choices(seed_AA, k=random.randint(1, 4)))
+    else:
+        gen_seq = seed
+
     to_index = {a: i for i, a in enumerate(vocab)}
     index_to_amino = {i: a for i, a in enumerate(vocab)}
-    seed_indices = [to_index[aa] for aa in seed if aa in to_index and to_index[aa] != 21]
+    seed_indices = [to_index[aa] for aa in gen_seq if aa in to_index and to_index[aa] != 21]
 
     input_tensor = torch.LongTensor(seed_indices).unsqueeze(0).to(device)
 
     state_h, state_c = model.init_state(1)
     state_h, state_c = state_h.to(device), state_c.to(device)
 
-    seed_AA = ['W', 'L', 'K', 'R', 'I', 'F', 'V']
+
 
     if seed == 'r':
-        gen_seq = ''.join(random.choices(seed_AA, k=4))
+        gen_seq = ''.join(random.choices(seed_AA, k=random.randint(1, 4)))
     else:
         gen_seq = seed
 
-    for _ in range(number_aa - len(seed)):  # Ensures the loop stops at the specified length
+    for _ in range(number_aa - len(seed)):
         with torch.no_grad():
             y_pred, (state_h, state_c) = model(input_tensor, (state_h, state_c))
 
@@ -352,7 +358,10 @@ def main():
     for pep in gen_sequences:
         print(pep)
         print('\n')
-        if pep in peptides:
+        if 'U' in peptides:
+            print('Peptide contains non canonical amino acids \n Peptide marked for removal from generated sequences \n--------------------------\n')
+            peptides_to_remove.add(pep)
+        elif pep in peptides:
             print('Peptide already in dataset \n Peptide marked for removal from generated sequences \n--------------------------\n')
             peptides_to_remove.add(pep)
 

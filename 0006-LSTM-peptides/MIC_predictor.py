@@ -2,6 +2,7 @@ import pandas as pd
 from tqdm import tqdm
 import math
 from propy import PyPro
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -54,6 +55,10 @@ def calculate_descriptors(sequence):
     return aa_comp, ctd, qso
 
 
+import numpy as np
+import pandas as pd
+
+
 def desc_to_df(df):
     """
     Add molecular descriptor features to a DataFrame containing peptide sequences.
@@ -64,37 +69,53 @@ def desc_to_df(df):
     Returns:
         - pd.DataFrame: The input DataFrame with additional columns for normalized descriptor features:
             - 'AA_Composition': Amino acid composition descriptors (normalized).
-            - 'CDT': Composition, transition, and distribution descriptors (scaled).
+            - 'CTD': Composition, transition, and distribution descriptors (scaled).
             - 'QSO': Quasi-sequence order descriptors (scaled).
+        - dims (list): List containing the dimensions of each descriptor category.
+        - mins_ctd, maxs_ctd: Min/max values for CTD features.
+        - mins_qso, maxs_qso: Min/max values for QSO features.
     """
+
     aa_comp_list = []
     ctd_list = []
     qso_list = []
 
-    #calculates the descriptors of each sequence in the df
+    # Calculate descriptors for each sequence in the df
     for sequence in df['Sequence']:
         aa_comp, ctd, qso = calculate_descriptors(sequence)
         aa_comp_list.append(aa_comp)
         ctd_list.append(ctd)
         qso_list.append(qso)
 
-    # Add lists as columns and apply normalization
+    # Convert descriptor lists into DataFrame columns
     df['AA_Composition'] = aa_comp_list
+    df['CTD'] = ctd_list
+    df['QSO'] = qso_list
+
+    ctd_array = np.stack(ctd_list)
+    qso_array = np.stack(qso_list)
+
+    # Compute feature-wise min and max
+    mins_ctd = ctd_array.min(axis=0)
+    maxs_ctd = ctd_array.max(axis=0)
+    mins_qso = qso_array.min(axis=0)
+    maxs_qso = qso_array.max(axis=0)
+
+    # Normalize AA_Composition
     df['AA_Composition'] = df['AA_Composition'].apply(lambda x: [val / 100 for val in x])
 
-    #min-max normalization
-    df['CTD'] = ctd_list
-    ctd_min = df['CTD'].apply(lambda x: min(x)).min()
-    ctd_max = df['CTD'].apply(lambda x: max(x)).max()
-    df['CTD'] = df['CTD'].apply(lambda x: [(val - ctd_min) / (ctd_max - ctd_min) for val in x])
+    # Normalize CTD descriptors
+    df['CTD'] = list((ctd_array - mins_ctd) / (maxs_ctd - mins_ctd + 1e-8))
 
-    #min-max normalization
-    df['QSO'] = qso_list
-    qso_min = df['QSO'].apply(lambda x: min(x)).min()
-    qso_max = df['QSO'].apply(lambda x: max(x)).max()
-    df['QSO'] = df['QSO'].apply(lambda x: [(val - qso_min) / (qso_max - qso_min) for val in x])
+    # Normalize QSO descriptors
+    df['QSO'] = list((qso_array - mins_qso) / (maxs_qso - mins_qso + 1e-8))
 
-    return df
+    aa_comp_dim = len(df['AA_Composition'].iloc[0])
+    ctd_dim = len(df['CTD'].iloc[0])
+    qso_dim = len(df['QSO'].iloc[0])
+    dims = [aa_comp_dim, ctd_dim, qso_dim]
+
+    return df, dims, mins_ctd, maxs_ctd, mins_qso, maxs_qso
 
 
 class PeptideDataset(Dataset):
@@ -227,7 +248,6 @@ class LSTMActivityPredictor(nn.Module):
 
         # Embedding layer
         embeds = self.embedding(sequence).permute(1, 0, 2)  # [seq_len, batch_size, embedding_dim]
-
         # LSTM for peptide sequence
         lstm_out, (h_f, c_f) = self.lstm(embeds, (h_0, c_0))
         lstm_out = lstm_out[-1, :, :]
@@ -286,6 +306,7 @@ def train(dataloader, model, epochs, percentage=10):
                 tolerance_range = (percentage / 100) * labels
                 lower_bound = labels - tolerance_range
                 upper_bound = labels + tolerance_range
+
 
                 correct_preds = (preds.view(-1) >= lower_bound) & (preds.view(-1) <= upper_bound)
                 accuracy = correct_preds.float().sum() / correct_preds.numel()
@@ -348,7 +369,7 @@ def activity_test(dataloader, model, percentage=10):
     return avg_test_loss, avg_test_accuracy
 
 
-def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, min_ctd, min_qso, max_ctd, max_qso, accuracy_percentage):
+def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, mins_ctd, mins_qso, maxs_ctd, maxs_qso, accuracy_percentage):
     """
     Predicts the Minimum Inhibitory Concentration (MIC) for a given peptide sequence using a trained model.
 
@@ -358,10 +379,10 @@ def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, min_ctd, 
         - max_seq_len (int): Maximum sequence length for padding/truncation.
         - min_mic (float): Minimum MIC value in the training dataset (for normalization reversal).
         - max_mic (float): Maximum MIC value in the training dataset (for normalization reversal).
-        - min_ctd (float): Minimum CTD descriptor value in the training dataset.
-        - max_ctd (float): Maximum CTD descriptor value in the training dataset.
-        - min_qso (float): Minimum QSO descriptor value in the training dataset.
-        - max_qso (float): Maximum QSO descriptor value in the training dataset.
+        - mins_ctd (list): Minimum CTD descriptor value in the training dataset.
+        - maxs_ctd (list): Maximum CTD descriptor value in the training dataset.
+        - mins_qso (list): Minimum QSO descriptor value in the training dataset.
+        - maxs_qso (list): Maximum QSO descriptor value in the training dataset.
         - accuracy_percentage (float): Allowed percentage deviation for the confidence interval.
 
     Returns:
@@ -369,33 +390,29 @@ def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, min_ctd, 
         - lower_bound (float): Lower bound of the MIC confidence interval in µM.
         - upper_bound (float): Upper bound of the MIC confidence interval in µM.
     """
-    # Calculate descriptors (AA composition, CTD, QSO)
     aa_comp, ctd, qso = calculate_descriptors(sequence)
+    aa_comp_normalized = [val / 100 for val in aa_comp]
 
-    # Normalize AA composition (already normalized in the dataset preparation)
-    aa_comp_normalized = [val / 100 for val in aa_comp]  # Normalization to sum to 1
+    ctd = np.array(ctd)
+    qso = np.array(qso)
 
-    # Normalize CTD and QSO
-    ctd_normalized = [(val - min_ctd) / (max_ctd - min_ctd) for val in ctd]
-    qso_normalized = [(val - min_qso) / (max_qso - min_qso) for val in qso]
+    ctd_normalized = (ctd - mins_ctd) / (maxs_ctd - mins_ctd + 1e-8)
+    qso_normalized = (qso - mins_qso) / (maxs_qso - mins_qso + 1e-8)
 
-    # Convert normalized descriptors to tensors
     aa_comp_tensor = torch.tensor(aa_comp_normalized, dtype=torch.float32)
     ctd_tensor = torch.tensor(ctd_normalized, dtype=torch.float32)
     qso_tensor = torch.tensor(qso_normalized, dtype=torch.float32)
 
-    # Encode the sequence
     char_to_idx = {aa: i for i, aa in enumerate("ACDEFGHIKLMNPQRSTVWY_")}
     padded = padding(sequence, max_seq_len)
     encoded = [char_to_idx.get(aa, char_to_idx['_']) for aa in padded]
-    sequence_tensor = torch.tensor(encoded, dtype=torch.long).unsqueeze(0)  # Add batch dimension
+    sequence_tensor = torch.tensor(encoded, dtype=torch.long).unsqueeze(0)
 
-    # Make the model prediction
     model.eval()
     with torch.no_grad():
         pred_mic_log10_normalized, _ = model(sequence_tensor, aa_comp_tensor.unsqueeze(0), ctd_tensor.unsqueeze(0),
                                              qso_tensor.unsqueeze(0))
-
+    print(pred_mic_log10_normalized)
     # Denormalize the predicted MIC
     pred_mic_log10 = (pred_mic_log10_normalized * (max_mic - min_mic)) + min_mic
     pred_mic = 10 ** pred_mic_log10  # Convert log10 to MIC
@@ -404,10 +421,10 @@ def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, min_ctd, 
     tolerance_range = (accuracy_percentage / 100) * pred_mic
     lower_bound = pred_mic - tolerance_range
     upper_bound = pred_mic + tolerance_range
-
+    print(pred_mic_log10_normalized)
     # Print prediction with uncertainty
-    print(f"Predicted MIC for sequence {sequence}: {pred_mic:.4f} µM ± {tolerance_range:.4f} µM")
-    print(f"Confidence Interval: {lower_bound:.4f} µM to {upper_bound:.4f} µM")
+    print(f"Predicted MIC for sequence {sequence}: {pred_mic.item():.4f} µM ± {tolerance_range.item():.4f} µM")
+    print(f"Confidence Interval: {lower_bound.item():.4f} µM to {upper_bound.item():.4f} µM")
     return pred_mic, lower_bound, upper_bound
 
 
@@ -436,15 +453,9 @@ min_val = df['log10_Standardised_MIC'].min()
 max_val = df['log10_Standardised_MIC'].max()
 df['scaled_log10_MIC'] = (df['log10_Standardised_MIC'] - min_val) / (max_val - min_val)
 
-df = desc_to_df(df)
+df, dims, mins_ctd, maxs_ctd, mins_qso, maxs_qso = desc_to_df(df)
+aa_comp_dim, ctd_dim, qso_dim = dims[0], dims[1], dims[2]
 
-aa_comp_dim = len(df['AA_Composition'].iloc[0])  # Dimension of AA_Comp
-ctd_dim = len(df['CTD'].iloc[0])                # Dimension of CTD
-qso_dim = len(df['QSO'].iloc[0])                # Dimension of QSO
-min_ctd = df['CTD'].min()
-max_ctd = df['CTD'].max()
-min_qso = df['QSO'].min()
-max_qso = df['QSO'].max()
 
 model = LSTMActivityPredictor(
     embedding_dim=100,
@@ -474,23 +485,23 @@ train(
     train_loader,
     model,
     epochs=20,
-    percentage=5
+    percentage=10
 )
 
-test_loss, test_accuracy = activity_test(test_loader, model, percentage=5)
+test_loss, test_accuracy = activity_test(test_loader, model, percentage=10)
 
-test_sequence = 'RWWWWWRGLLRD'
+test_sequence = 'RRRRRRR'
 activity_predictor(
     test_sequence,
     model,
     max_seq_len=35,
     min_mic=min_val,
     max_mic=max_val,
-    min_ctd=min_ctd,
-    min_qso=min_qso,
-    max_ctd=max_ctd,
-    max_qso=max_qso,
-    accuracy_percentage=5
+    mins_ctd=mins_ctd,
+    mins_qso=mins_qso,
+    maxs_ctd=maxs_ctd,
+    maxs_qso=maxs_qso,
+    accuracy_percentage=10
 )
 
 

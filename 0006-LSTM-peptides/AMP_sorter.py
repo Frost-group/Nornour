@@ -3,7 +3,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import requests
+import argparse
 from bs4 import BeautifulSoup
+
+class SorterArgs:
+    def __init__(self):
+        self.input_path = '../0006b-LSTM-data/generation_peptides.fasta'
+        self.sorting_path = '../0006b-LSTM-data/sorted_peptides.fasta'
+        self.output_path = '../0006b-LSTM-data/potential_amp.fasta'
+
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train and test LSTM model for peptide sequences')
+
+    parser.add_argument('--input_path', type=str, required=True, help='Path to file with initial generated peptides (FASTA format)')
+    parser.add_argument('--sorting_path', type=str, required=True, help='Path to file in which to store the sorted peptides (FASTA format)')
+    parser.add_argument('--output_path', type=str, required=True, help='Path to file in which to store the 20 best potential AMPs (FASTA format)')
+
+    args = parser.parse_args()
+
+    return args
+
+args = parse_args()
 
 
 def fasta_to_df(filepath):
@@ -152,9 +174,9 @@ def amp_proba_predictor(filepath):
     return pred_AMP_proba
 
 
-input_filepath = '../0006b-LSTM-data/generation_peptides.fasta'
-output_filepath = '../0006b-LSTM-data/sorted_peptides.fasta'
-sec_output_file = '../0006b-LSTM-data/potential_amp.fasta'
+input_filepath = args.input_path
+output_filepath = args.sorting_path
+sec_output_file = args.output_path
 
 output_df = amp_sorter(input_filepath, output_filepath)
 pred_AMP_proba = amp_proba_predictor(output_filepath)

@@ -500,12 +500,12 @@ if __name__ == "__main__":
         print(f"Model saved to {model_path}")
 
     print('Command to run for peptide generation: \n')
-    print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path lstm_peptides_model.pt --output_path ../0006b-LSTM-data/generation_output.fasta --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 100 --min_length 2 --max_length 20 --seed 'WLKL'""")
+    print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path lstm_peptides_model.pt --output_path ../0006b-LSTM-data/generation_output.fasta --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 100 --min_length 2 --max_length 15 --seed 'r' """)
 
 """
 Command to run code:
 
-python LSTM-peptide-model.py  --dataset_path ../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides --output_size 22 --epochs 15 --batch_size 8 --learning_rate 0.000063 --hidden_size 256 --layers 1 --dropout 0.7 --max_length 20 --vocabulary "RHKDESTNQCUGPAILMFWYV_"  --save_model True
+python LSTM-peptide-model.py  --dataset_path ../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides --output_size 22 --epochs 15 --batch_size 8 --learning_rate 0.000063 --hidden_size 256 --layers 2 --dropout 0.7 --max_length 15 --vocabulary "RHKDESTNQCUGPAILMFWYV_"  --save_model True
 """
 
 """
