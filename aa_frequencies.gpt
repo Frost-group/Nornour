@@ -1,0 +1,46 @@
+# histogram.gnu
+set terminal pngcairo enhanced font "Gill Sans,12" size 600,400
+set output 'aa_frequencies.png'
+
+set style data histogram
+set style histogram cluster gap 1
+set style fill solid 0.5
+set boxwidth 0.9
+
+set xlabel "Amino Acid"
+set ylabel "Frequency (%)"
+set title "Amino Acid Frequencies: SwissProt vs DBAASP"
+
+# Use a minimal grid for readability
+set grid ytics lt 0 lw 1 lc rgb "#bbbbbb"
+
+# Create the data file on-the-fly
+#  DBAASP analysis by Igor; SwissProt by Jarv. Perhaps errors, but, you know,
+#  it's just statistical innit.
+$data << EOD
+AA SwissProt DBAASP
+A  8.25  7.006
+C  1.37  2.535
+D  5.45  1.266
+E  6.75  1.404
+F  3.86  5.272
+G  7.07  6.976
+H  2.27  1.963
+I  5.96  7.112
+K  5.84  16.128
+L  9.66  12.530
+M  2.42  0.929
+N  4.07  2.065
+P  4.70  4.053
+Q  3.93  1.808
+R  5.53  10.936
+S  6.56  3.410
+T  5.34  2.355
+V  6.87  5.540
+W  1.08  4.843
+Y  2.92  1.868
+EOD
+
+plot $data using 2:xtic(1) title "SwissProt" lc rgb "#0072BD", \
+     '' using 3 title "DBAASP" lc rgb "#D95319"
+
