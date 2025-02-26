@@ -4,10 +4,10 @@
 # Need to rewrite to make compatible with ARCHER (add srun + distribute tasks across CPUs).
 
 # Sub for desired sequence - can generate .pdb with boltz-1 once get that running locally
-peptide="RWRWWWW"
+peptide="RRWKIVVIRWRR"
 
 # Currently sub for either DOPC_CHOL (human) or DOPE_DOPG (bacterial)
-membrane="DOPC_CHOL"
+membrane="DOPE_DOPG"
 
 # conda install conda-forge::gromacs
 # conda install anaconda::pip
@@ -32,8 +32,10 @@ prepare_peptide() {
 # Function inserts martini peptide into membrane model, merging topology files and updating water count.
 # insertpep.dat specifies coordinates for insertion (x,y,z).
 insert_peptide() {
-
-    gmx insert-molecules -f ${membrane}.gro -ci ${peptide}_${membrane}_cg.pdb -ip insertpep.dat -o ${peptide}_${membrane}.gro -replace W -radius 0.5
+    
+    gmx editconf -f ${peptide}_${membrane}_cg.pdb -center 0 0 0 -o ${peptide}_${membrane}_cgc.pdb   
+     
+    gmx insert-molecules -f ${membrane}.gro -ci ${peptide}_${membrane}_cgc.pdb -ip insertpep.dat -o ${peptide}_${membrane}.gro -replace W -radius 0.5
 
    cat ${membrane}.top > ${peptide}_${membrane}_temp.top
    
@@ -73,7 +75,7 @@ create_index_groups() {
     echo "keep 0" > ${peptide}_${membrane}_index-selection.txt
     echo "r W | r ION | r CL" >> ${peptide}_${membrane}_index-selection.txt
     echo "name 1 Solvent" >> ${peptide}_${membrane}_index-selection.txt
-    echo "r DOPC | r CHOL" >> ${peptide}_${membrane}_index-selection.txt
+    echo "r DOPE | r DOPG" >> ${peptide}_${membrane}_index-selection.txt
     echo "name 2 Membrane" >> ${peptide}_${membrane}_index-selection.txt
     echo '!1 & !2' >> ${peptide}_${membrane}_index-selection.txt
     echo "name 3 Protein" >> ${peptide}_${membrane}_index-selection.txt
@@ -109,34 +111,41 @@ run_umbrella() {
 
     echo 0 | gmx trjconv -s ${peptide}_${membrane}_production.tpr -f ${peptide}_${membrane}_production.xtc -o ${peptide}_${membrane}_conf.gro -sep
 
-    for (( i=0; i<257; i++ ))
+    for (( i=0; i<511; i++ ))
     do
     	gmx distance -s ${peptide}_${membrane}_production.tpr -f ${peptide}_${membrane}_conf${i}.gro -n ${peptide}_${membrane}.ndx -select 'com of group "Protein" plus com of group "Membrane"'
     done
   
-    for i in {0..127}; do
+    for i in {0..255}; do
     	conf_num=$((2*i + 1))
     	gmx grompp -f production_umbrella.mdp -c ${peptide}_${membrane}_conf${conf_num}.gro -p ${peptide}_${membrane}.top -r ${peptide}_${membrane}_conf${conf_num}.gro -n ${peptide}_${membrane}.ndx -o ${peptide}_${membrane}_umbrella${i}.tpr -maxwarn 2
     done
-    
-    for i in {0..127}; do
-	gmx mdrun -deffnm ${peptide}_${membrane}_umbrella${i} &
+
+    for i in {0..255}; do
+        gmx mdrun -deffnm ${peptide}_${membrane}_umbrella${i}
     done
-    wait
 }
 
 # Function takes input of .dat files, performs weighted histogram analysis and outputs pmf. 
 run_wham() {
  
-    for i in {0..127}
+    for i in {0..255}
     do
     	echo "${peptide}_${membrane}_umbrella${i}.tpr" >> ${peptide}_${membrane}_tpr-files.dat
     done
 
-    for i in {0..127}
+    sync
+    
+    sleep 15
+
+    for i in {0..255}
     do
     	echo "${peptide}_${membrane}_umbrella${i}_pullx.xvg" >> ${peptide}_${membrane}_pullx-files.dat
     done
+
+    sync
+   
+    sleep 15
    
     gmx wham -it ${peptide}_${membrane}_tpr-files.dat -ix ${peptide}_${membrane}_pullx-files.dat -o ${peptide}_${membrane}_pmf.xvg -hist ${peptide}_${membrane}_hist.xvg -unit kCal   
 }
