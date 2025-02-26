@@ -103,7 +103,15 @@ create_index_groups() {
     echo "keep 0" > ${peptide}_${membrane}_index-selection.txt
     echo "r W | r ION | r CL" >> ${peptide}_${membrane}_index-selection.txt
     echo "name 1 Solvent" >> ${peptide}_${membrane}_index-selection.txt
-    echo "r DOPE | r DOPG" >> ${peptide}_${membrane}_index-selection.txt
+    
+    # hacky way to switch, but will do for now! ~Jarv
+    if [[ "${membrane}" == "DOPE_DOPG" ]]
+    then
+    	echo "r DOPE | r DOPG" >> ${peptide}_${membrane}_index-selection.txt
+    else
+	echo "r DOPC | r CHOL" >> ${peptide}_${membrane}_index-selection.txt
+    fi
+
     echo "name 2 Membrane" >> ${peptide}_${membrane}_index-selection.txt
     echo '!1 & !2' >> ${peptide}_${membrane}_index-selection.txt
     echo "name 3 Protein" >> ${peptide}_${membrane}_index-selection.txt
