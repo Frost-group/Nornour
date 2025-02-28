@@ -21,7 +21,7 @@ cd ${peptide}
 
    echo "Peptide: ${peptide} Inferred charge: ${charge}"
 
-for solvent in "water" "octanol" "woctanol"
+for solvent in "water" #"octanol" "woctanol"
 do
 
 mkdir -p md-${solvent}
