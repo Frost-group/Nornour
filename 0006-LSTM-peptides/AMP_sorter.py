@@ -2,9 +2,8 @@ from Bio.SeqUtils.ProtParam import ProteinAnalysis
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import requests
 import argparse
-from bs4 import BeautifulSoup
+
 
 class SorterArgs:
     def __init__(self):
@@ -146,47 +145,12 @@ def amp_sorter(fasta_file_input, fasta_file_output):
     return output_df
 
 
-def amp_proba_predictor(filepath):
-    url = 'http://www.camp3.bicnirrh.res.in/predict/hii.php'
-
-    files = {'userfile': open(filepath, 'rb')}
-    payload = {'algo[]': 'rf'}
-    r = requests.post(url, data=payload, files=files)
-
-    soup = BeautifulSoup(r.text, 'html.parser')
-    table = soup.find('table')
-    values = []
-
-    if table:
-        rows = table.find_all('tr')[5:]
-        values = []
-
-        for row in rows:
-            cells = row.find_all('td')
-            if len(cells) > 2:
-                try:
-                    value =  float(cells[2].text.strip())
-                    values.append(value)
-                except ValueError:
-                    pass
-
-    pred_AMP_proba = [v for v in values if v is not None]
-    return pred_AMP_proba
-
 
 input_filepath = args.input_path
 output_filepath = args.sorting_path
-sec_output_file = args.output_path
 
 output_df = amp_sorter(input_filepath, output_filepath)
-pred_AMP_proba = amp_proba_predictor(output_filepath)
 
-output_df['AMP probability'] = pd.DataFrame(pred_AMP_proba)
-
-peptide_df_sorted = output_df.sort_values(by='AMP probability', ascending=False)
-print(peptide_df_sorted)
-
-df_to_fasta(sec_output_file, peptide_df_sorted[0:20])
 
 
 

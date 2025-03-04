@@ -3,14 +3,58 @@ from tqdm import tqdm
 import math
 from propy import PyPro
 import numpy as np
+import argparse
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, random_split
 
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
+
+class MICArgs:
+    def __init__(self):
+        self.data_path = '../0003e-DRAMP-MIC-database/DRAMP_MIC_p_aeruginosa.csv'
+        self.batch_size = 8
+        self.epochs = 50
+        self.embedding_dim = 100
+        self.hidden_dim = 256
+        self.num_layers = 2
+        self.dropout = 0.5
+        self.learning_rate = 1e-3
+        self.weight_decay = 1e-5
+        self.max_seq_len = 15
+        self.accuracy_percentage = 10.0
+        self.train_ratio = 0.8
+        self.vocab_size = 21
+        self.train = True
+        self.model_path = 'bi_lstm_peptides_model.pt'
+        self.peptide_path = '../0006b-LSTM-data/sorted_peptides.fasta'
+        self.prediction_path = '../0006b-LSTM-data/predictions.csv'
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description="Train and evaluate an LSTM-based peptide activity predictor.")
+
+    parser.add_argument('--data_path', type=str, required=True, help="Path to the input dataset (CSV file).")
+    parser.add_argument('--batch_size', type=int, default=32, help="Batch size for training and evaluation.")
+    parser.add_argument('--epochs', type=int, default=10, help="Number of training epochs.")
+    parser.add_argument('--embedding_dim', type=int, default=128, help="Dimension of sequence embedding layer.")
+    parser.add_argument('--hidden_dim', type=int, default=256, help="Number of hidden units in LSTM.")
+    parser.add_argument('--num_layers', type=int, default=2, help="Number of LSTM layers.")
+    parser.add_argument('--dropout', type=float, default=0.5, help="Dropout rate between LSTM layers.")
+    parser.add_argument('--max_seq_len', type=int, default=50, help="Maximum length of peptide sequences.")
+    parser.add_argument('--learning_rate', type=float, default=1e-3, help="Learning rate for optimizer.")
+    parser.add_argument('--weight_decay', type=float, default=1e-5, help="Weight decay for optimizer.")
+    parser.add_argument('--accuracy_percentage', type=float, default=10.0, help="Percentage range for accuracy calculation.")
+    parser.add_argument('--train_ratio', type=float, default=0.8, help="Proportion of data used for training.")
+    parser.add_argument('--vocab_size', type=int, default=21, help='Vocabulary size (number of amino acids')
+    parser.add_argument('--train', type=bool, default=True, help='Whether to train the model before prediction')
+
+    args = parser.parse_args()
+    return args
 
 
 def padding(peptide, long_pep):
@@ -116,6 +160,21 @@ def desc_to_df(df):
     dims = [aa_comp_dim, ctd_dim, qso_dim]
 
     return df, dims, mins_ctd, maxs_ctd, mins_qso, maxs_qso
+
+
+def fasta_to_df(filepath):
+    with open(filepath, 'r') as fasta_file:
+        fasta = fasta_file.readlines()
+        fasta = [pep.strip() for pep in fasta if pep.strip()]
+        peptides = []
+        for i, line in enumerate(fasta):
+            if i % 2:
+                peptides.append(line)
+
+    peptides_df = pd.DataFrame(peptides, columns=['Sequence'])
+    peptides_df = peptides_df[~peptides_df['Sequence'].str.contains('U')]  # "~" negates the condition
+
+    return peptides_df
 
 
 class PeptideDataset(Dataset):
@@ -279,7 +338,7 @@ def train(dataloader, model, epochs, percentage=10):
     """
     model.train()
     criterion = nn.MSELoss() #Mean Squared Error loss for regression task
-    optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5)
+    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
     print('\n-------Starting Training------- \n_________________________________')
 
@@ -425,84 +484,86 @@ def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, mins_ctd,
     # Print prediction with uncertainty
     print(f"Predicted MIC for sequence {sequence}: {pred_mic.item():.4f} µM ± {tolerance_range.item():.4f} µM")
     print(f"Confidence Interval: {lower_bound.item():.4f} µM to {upper_bound.item():.4f} µM")
-    return pred_mic, lower_bound, upper_bound
+
+    return pred_mic, lower_bound, upper_bound, tolerance_range
 
 
-input_file = '../0003e-DRAMP-MIC-database/DRAMP_MIC_p_aeruginosa.csv'
 
-# Create an empty list to store rows
-data = []
 
-with open(input_file, "r") as infile:
+
+
+def main():
+    args = get_args()
+
+
+    # Create an empty list to store rows
+    data = []
+
+    with open(args.data_path, "r") as infile:
     # Read the header line
-    headers = infile.readline().strip()
+        headers = infile.readline().strip()
 
-    # Process each subsequent line
-    for line in infile:
-        columns = line.strip().split(",")
-        data.append(columns)
+         # Process each subsequent line
+        for line in infile:
+            columns = line.strip().split(",")
+            data.append(columns)
 
-# Create a DataFrame with the collected data
-df = pd.DataFrame(data, columns=['Sequence', 'Molecular_Weight[g/mol]', 'Standardised_MIC[µM]'])
-df['Standardised_MIC[µM]']= df['Standardised_MIC[µM]'].apply(lambda x: float(x))
+    # Create a DataFrame with the collected data
+    df = pd.DataFrame(data, columns=['Sequence', 'Molecular_Weight[g/mol]', 'Standardised_MIC[µM]'])
+    df['Standardised_MIC[µM]']= df['Standardised_MIC[µM]'].apply(lambda x: float(x))
+
+    #taking log10 of MIC and scaling between min and max values
+    df['log10_Standardised_MIC'] = df['Standardised_MIC[µM]'].apply(lambda x: math.log10(x))
+    min_val = df['log10_Standardised_MIC'].min()
+    max_val = df['log10_Standardised_MIC'].max()
+    df['scaled_log10_MIC'] = (df['log10_Standardised_MIC'] - min_val) / (max_val - min_val)
+
+    df, dims, mins_ctd, maxs_ctd, mins_qso, maxs_qso = desc_to_df(df)
+    aa_comp_dim, ctd_dim, qso_dim = dims[0], dims[1], dims[2]
+
+    model = LSTMActivityPredictor(
+            embedding_dim=args.embedding_dim,
+            aa_comp_dim=aa_comp_dim,
+            ctd_dim=ctd_dim,
+            qso_dim=qso_dim,
+            vocab_size=args.vocab_size,
+            hidden_dim=args.hidden_dim,
+            batch_size=args.batch_size,
+            num_layers=args.num_layers,
+            dropout= args.dropout
+        )
+    if args.train:
+        dataset = PeptideDataset(df, max_seq_len=args.max_seq_len)
+        dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+
+        dataset_size = len(dataset)
+        train_size = int(args.train_ratio * dataset_size)
+        test_size = dataset_size - train_size
+
+        train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
+
+        train(
+            train_loader,
+            model,
+            epochs=args.epochs,
+            percentage=args.accuracy_percentage
+        )
+
+        test_loss, test_accuracy = activity_test(test_loader, model, percentage=args.accuracy_percentage)
+
+    else:
+        model.load_state_dict(torch.load(args.model_path, weights_only=True))
+
+    peptides_df = fasta_to_df(args.peptides_path)
+    peptides_df[['MIC', 'Lower Bound', 'Upper Bound', 'Tolerance']] = df['Sequence'].apply(lambda x: activity_predictor(x ,model, max_seq_len=args.max_seq_len, min_mic=min_val, max_mic=max_val, mins_ctd=mins_ctd, mins_qso=mins_qso, maxs_ctd=maxs_ctd, maxs_qso=maxs_qso, accuracy_percentage=args.accuracy_percentage)).apply(pd.Series)
+    df.to_csv(args.predictions_path, index=False)
 
 
-#taking log10 of MIC and scaling between min and max values
-df['log10_Standardised_MIC'] = df['Standardised_MIC[µM]'].apply(lambda x: math.log10(x))
-min_val = df['log10_Standardised_MIC'].min()
-max_val = df['log10_Standardised_MIC'].max()
-df['scaled_log10_MIC'] = (df['log10_Standardised_MIC'] - min_val) / (max_val - min_val)
-
-df, dims, mins_ctd, maxs_ctd, mins_qso, maxs_qso = desc_to_df(df)
-aa_comp_dim, ctd_dim, qso_dim = dims[0], dims[1], dims[2]
-
-
-model = LSTMActivityPredictor(
-    embedding_dim=100,
-    aa_comp_dim=aa_comp_dim,
-    ctd_dim=ctd_dim,
-    qso_dim=qso_dim,
-    vocab_size=21,
-    hidden_dim=256,
-    batch_size=64,
-    num_layers=6,
-    dropout= 0.3
-)
-
-dataset = PeptideDataset(df, max_seq_len=35)
-dataloader = DataLoader(dataset, batch_size = 64, shuffle=True)
-
-dataset_size = len(dataset)
-train_size = int(0.9 * dataset_size)
-test_size = dataset_size - train_size
-
-train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
-
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
-
-train(
-    train_loader,
-    model,
-    epochs=20,
-    percentage=10
-)
-
-test_loss, test_accuracy = activity_test(test_loader, model, percentage=10)
-
-test_sequence = 'RRRRRRR'
-activity_predictor(
-    test_sequence,
-    model,
-    max_seq_len=35,
-    min_mic=min_val,
-    max_mic=max_val,
-    mins_ctd=mins_ctd,
-    mins_qso=mins_qso,
-    maxs_ctd=maxs_ctd,
-    maxs_qso=maxs_qso,
-    accuracy_percentage=10
-)
-
+if __name__ == "__main__":
+    args = get_args()
+    main()
 
 

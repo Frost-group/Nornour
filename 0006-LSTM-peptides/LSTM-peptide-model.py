@@ -1,6 +1,3 @@
-#use LLM for peptide pred
-#find the georgian work on internet
-
 import torch
 import torch.nn as nn
 import torch.optim as optim

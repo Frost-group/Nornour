@@ -9,7 +9,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 
-class LSTMArgs:
+class LSTMArgsGen:
     def __init__(self):
         self.dataset_path = '../0003b-RW-Lexicon/RW_lexicon.dat'
         self.output_path = '../0006b-LSTM-data/generation_peptides.fasta'
