@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 class SorterArgs:
     def __init__(self):
         self.sorting_path = '../0006b-LSTM-data/sorted_peptides.fasta'
-        self.output_path = '../0006b-LSTM-data/potential_amp.fasta'
+        self.output_path = '../0006b-LSTM-data/predictions.csv'
 
 
 def parse_args():
@@ -45,6 +45,7 @@ def df_to_fasta(filepath, df):
             fasta_file.write(fasta_entry)  # Write each FASTA entry to the file
     print(f'Peptides stored in FASTA format at: {filepath}')
 
+
 def amp_proba_predictor(filepath):
     url = 'http://www.camp3.bicnirrh.res.in/predict/hii.php'
 
@@ -73,16 +74,20 @@ def amp_proba_predictor(filepath):
     return pred_AMP_proba
 
 
+def main():
+    sorting_filepath = args.sorting_path
+    output_file = args.output_path
 
-output_filepath = args.sorting_path
-sec_output_file = args.output_path
+    output_df = pd.read_csv(output_file)
+    pred_AMP_proba = amp_proba_predictor(sorting_filepath)
+    if pred_AMP_proba:
+        print('Values predicted')
 
-output_df = fasta_to_df(output_filepath)
-pred_AMP_proba = amp_proba_predictor(output_filepath)
+    output_df['AMP probability'] = pd.DataFrame(pred_AMP_proba)
 
-output_df['AMP probability'] = pd.DataFrame(pred_AMP_proba)
+    peptide_df_sorted = output_df.sort_values(by='AMP probability', ascending=False)
+    peptide_df_sorted.to_csv(output_file, index=False)
 
-peptide_df_sorted = output_df.sort_values(by='AMP probability', ascending=False)
-print(peptide_df_sorted)
 
-df_to_fasta(sec_output_file, peptide_df_sorted[0:20])
+if __name__ == '__main__':
+    main()

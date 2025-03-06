@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument('--num_sequences', type=int, default=100, help='Number of unique sequences to generate')
     parser.add_argument('--min_length', type=int, default=2, help='Minimum peptide length')
     parser.add_argument('--max_length', type=int, default=15, help='Maximum peptide length')
-    parser.add_argument('--seed', type=str, default='r', help="Seed sequence for generation, put 'r' for random seed generation")
+    parser.add_argument('--seed', type=str, default='r', help="Seed sequence for generation, put 'r' for automated seed generation")
     args = parser.parse_args()
 
     return args
@@ -191,6 +191,37 @@ def open_file(filepath):
         return None, None
 
 
+def weighted_seed():
+    pos1_aa = {'R': 12.158931082981717, 'H': 1.1251758087201125, 'K': 15.618846694796062, 'D': 1.0970464135021099,
+     'E': 1.047819971870605, 'S': 2.8129395218002813, 'T': 1.0970464135021099, 'N': 0.8720112517580872,
+     'Q': 0.8157524613220816, 'C': 2.229254571026723, 'G': 16.59634317862166, 'P': 1.9338959212376934,
+     'A': 5.780590717299578, 'I': 5.836849507735583, 'L': 7.165963431786217, 'M': 1.047819971870605,
+     'F': 11.969057665260197, 'W': 4.725738396624473, 'Y': 1.3713080168776373, 'V': 4.6976090014064695}
+    pos2_aa = {'R': 11.357243319268635, 'H': 0.9423347398030942, 'K': 13.361462728551334, 'D': 2.0604781997187063,
+     'E': 1.188466947960619, 'S': 2.1448663853727146, 'T': 1.4064697609001406, 'N': 2.517580872011252,
+     'Q': 1.5119549929676512, 'C': 1.6033755274261603, 'G': 4.585091420534459, 'P': 2.1870604781997187,
+     'A': 4.634317862165963, 'I': 8.319268635724333, 'L': 20.028129395218002, 'M': 0.9282700421940928,
+     'F': 6.279887482419127, 'W': 9.345991561181433, 'Y': 1.2165963431786215, 'V': 4.09985935302391}
+    pos3_aa = {'R': 11.308016877637131, 'H': 2.3558368495077358, 'K': 15.942334739803094, 'D': 0.9774964838255977,
+     'E': 1.1111111111111112, 'S': 2.7777777777777777, 'T': 1.3361462728551337, 'N': 1.6947960618846694,
+     'Q': 1.9549929676511955, 'C': 2.791842475386779, 'G': 6.8354430379746836, 'P': 7.229254571026724,
+     'A': 4.486638537271449, 'I': 5.576652601969058, 'L': 12.637130801687762, 'M': 1.0337552742616034,
+     'F': 5.253164556962026, 'W': 8.263009845288325, 'Y': 1.2447257383966244, 'V': 3.931082981715893}
+    aa_1 = list(pos1_aa.values())
+    aa_2 = list(pos2_aa.values())
+    aa_3 = list(pos3_aa.values())
+    vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C',
+             'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V']
+
+    pos1 = random.choices(vocab, weights=aa_1, k=1)[0]
+    pos2 = random.choices(vocab, weights=aa_2, k=1)[0]
+    pos3 = random.choices(vocab, weights=aa_3, k=1)[0]
+
+    return pos1 + pos2 + pos3
+
+
+
+
 def temperature_sampling(logits, temperature):
     """
     Performs temperature-based sampling to select the next token from a set of logits.
@@ -255,10 +286,10 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
         - The function ensures that the padding token ('_') is excluded from the sequence and terminates generation if it is sampled.
         - This function is particularly useful for generating synthetic peptides with controlled randomness via the `temperature` parameter.
     """
-    seed_AA = ['W', 'L', 'K', 'R', 'I', 'F', 'V']
+
 
     if seed == 'r':
-        gen_seq = ''.join(random.choices(seed_AA, k=random.randint(1, 4)))
+        gen_seq = weighted_seed()
     else:
         gen_seq = seed
 
@@ -270,13 +301,6 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
 
     state_h, state_c = model.init_state(1)
     state_h, state_c = state_h.to(device), state_c.to(device)
-
-
-
-    if seed == 'r':
-        gen_seq = ''.join(random.choices(seed_AA, k=random.randint(1, 4)))
-    else:
-        gen_seq = seed
 
     for _ in range(number_aa - len(seed)):
         with torch.no_grad():

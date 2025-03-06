@@ -140,16 +140,18 @@ def amp_sorter(fasta_file_input, fasta_file_output):
     peptide_df = peptide_df.query("`Amphiphilicity` > 0.33")
 
     df_to_fasta(fasta_file_output, peptide_df)
-    output_df = fasta_to_df(output_filepath)
-
-    return output_df
 
 
+def main():
 
-input_filepath = args.input_path
-output_filepath = args.sorting_path
+    input_filepath = args.input_path
+    output_filepath = args.sorting_path
 
-output_df = amp_sorter(input_filepath, output_filepath)
+    amp_sorter(input_filepath, output_filepath)
+
+
+if __name__ == '__main__':
+    main()
 
 
 
