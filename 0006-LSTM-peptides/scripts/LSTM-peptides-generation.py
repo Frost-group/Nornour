@@ -3,47 +3,33 @@ import torch.nn as nn
 import torch.nn.functional as F
 import argparse
 import random
+import os
+import datetime
+import subprocess
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 
-class LSTMArgsGen:
-    def __init__(self):
-        self.dataset_path = '../../0003b-RW-Lexicon/RW_lexicon.dat'
-        self.output_path = '../data/generation_peptides.fasta'
-        self.output_size = 22
-        self.epochs = 50
-        self.batch_size = 8
-        self.learning_rate = 0.00063
-        self.hidden_size = 256
-        self.layers = 2
-        self.dropout = 0.7
-        self.save_model = False
-        self.temperature = 1.0
-        self.num_sequences = 100
-        self.min_length = 2
-        self.max_length = 15
-        self.seed = 'r'
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and generate peptides using LSTM model')
-    parser.add_argument('--dataset_path', type=str, required=True, help='Path to the dataset used for training')
-    parser.add_argument('--output_path', type=str, required=True, help='Path to the output file for generated sequences (.fasta format)')
-    parser.add_argument('--model_path', type=str, required=True, help='Path to the trained model')
-    parser.add_argument('--output_size', type=int, default=22, help='Size of the output layer (default: 22)')
-    parser.add_argument('--epochs', type=int, default=50, help='Number of epochs for training')
-    parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
+
+    parser.add_argument('--dataset_path', type=str, default='../../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides', help='Path to the dataset used for training')
+    parser.add_argument('--output_path', type=str, default='-d', help='Path to the output file for generated sequences (.fasta format), -d for default file storage')
+    parser.add_argument('--model_path', type=str, default='../models/lstm_peptides_model.pt', help='Path to the trained model')
+    parser.add_argument('--output_size', type=int, default=21, help='Size of the output layer (default: 22)')
+    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs for training')
+    parser.add_argument('--batch_size', type=int, default=256, help='Batch size')
     parser.add_argument('--learning_rate', type=float, default=0.00063, help='Learning rate')
-    parser.add_argument('--hidden_size', type=int, default=256, help='Hidden layer size')
-    parser.add_argument('--layers', type=int, default=2, help='Number of LSTM layers')
-    parser.add_argument('--dropout', type=float, default=0.7, help='Dropout rate')
+    parser.add_argument('--hidden_size', type=int, default=128, help='Hidden layer size')
+    parser.add_argument('--layers', type=int, default=3, help='Number of LSTM layers')
+    parser.add_argument('--dropout', type=float, default=0.5, help='Dropout rate')
     parser.add_argument('--temperature', type=float, default=1.0, help='Sampling temperature for generation')
-    parser.add_argument('--num_sequences', type=int, default=100, help='Number of unique sequences to generate')
-    parser.add_argument('--min_length', type=int, default=2, help='Minimum peptide length')
+    parser.add_argument('--num_sequences', type=int, default=40000, help='Number of unique sequences to generate')
+    parser.add_argument('--min_length', type=int, default=1, help='Minimum peptide length')
     parser.add_argument('--max_length', type=int, default=15, help='Maximum peptide length')
-    parser.add_argument('--seed', type=str, default='r', help="Seed sequence for generation, put 'r' for automated seed generation")
+    parser.add_argument('--seed', type=str, default='-r', help="Seed sequence for generation, put '-r' for automated seed generation")
     args = parser.parse_args()
 
     return args
@@ -119,8 +105,8 @@ class LSTMPeptides(nn.Module):
         self.layers = args.layers
         self.dropout = args.dropout
 
-        self.vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
-                      'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
+        self.vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'G',
+                      'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
 
         self.len_vocab = len(self.vocab)
 
@@ -192,6 +178,12 @@ def open_file(filepath):
 
 
 def weighted_seed():
+    """
+    Creates a seed for generation based on the distribution of amino acids in the training dataset.
+
+    Returns:
+        - The 3 first amino acids for peptide generation."""
+
     pos1_aa = {'R': 12.158931082981717, 'H': 1.1251758087201125, 'K': 15.618846694796062, 'D': 1.0970464135021099,
      'E': 1.047819971870605, 'S': 2.8129395218002813, 'T': 1.0970464135021099, 'N': 0.8720112517580872,
      'Q': 0.8157524613220816, 'C': 2.229254571026723, 'G': 16.59634317862166, 'P': 1.9338959212376934,
@@ -220,8 +212,6 @@ def weighted_seed():
     return pos1 + pos2 + pos3
 
 
-
-
 def temperature_sampling(logits, temperature):
     """
     Performs temperature-based sampling to select the next token from a set of logits.
@@ -245,9 +235,14 @@ def temperature_sampling(logits, temperature):
 
 def load_model(model_path, long_pep):
     """
+    Loads the trained LSTM model.
 
+    Args:
+        - model_path (string): Path to the .pt file containing the trained model.
+        - long_pep (int): Longest peptide in the training dataset or maximum set length.
+    Returns:
+        - model (nn.Module): The trained LSTM model"""
 
-    """
     model = LSTMPeptides(long_pep)
     model.load_state_dict(torch.load(model_path, weights_only=True))
     model.eval()
@@ -288,7 +283,7 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
     """
 
 
-    if seed == 'r':
+    if seed == '-r':
         gen_seq = weighted_seed()
     else:
         gen_seq = seed
@@ -333,11 +328,11 @@ def seq_to_fasta(peptide: list, file_path: str):
     Returns:
         None: The function writes the FASTA data to the specified file and prints a confirmation message.
     """
+
     with open(file_path, 'w') as file:
         for i, seq in enumerate(peptide):
-            # Format each peptide into FASTA format
             fasta_entry = f'>peptide_{i+1}\n{seq}\n'
-            file.write(fasta_entry)  # Write each FASTA entry to the file
+            file.write(fasta_entry)
     print(f'Peptides stored in FASTA format at: {file_path}')
 
 
@@ -363,7 +358,7 @@ def main():
 
     model = load_model(args.model_path, long_pep)
 
-    vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
+    vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C',
              'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
 
     iteration = 0
@@ -399,8 +394,40 @@ def main():
     print(f'Shortest peptide: {short_len} amino acids')
     print(f'Longest peptide: {long_len} amino acids\n')
 
+
+    today = datetime.today().strftime("%d-%m-%Y")
+    base_dir = "../data"
+    gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
+    gen_dir = os.path.join(base_dir, f"gen_{today}", f"generated_peptides_{gen_count}")
+    if args.output_path == '-d':
+        gen_path = os.path.join(gen_dir, "gen_peptides.fasta")
+
+    else:
+        gen_path = args.output_path
+
     gen_seq_list = list(gen_sequences)
-    seq_to_fasta(gen_seq_list, args.output_path)
+    seq_to_fasta(gen_seq_list, gen_path)
+
+    sum_path = os.path.join(gen_dir, "generation_summary.txt")
+    with open(sum_path, 'a') as file:
+        file.write(f'\n Generation summary: \n')
+        file.write('Configuration:\n')
+
+        for arg, value in vars(args).items():
+            file.write(f'\t- {arg}: {value}\n')
+        file.write('Generation data: \n')
+        file.write(f'\t- Number of sequences generated: {args.num_sequences}\n')
+        file.write(f'\t- Number of new sequences generated: {len(gen_sequences)}\n')
+        file.write(f'\t- Shortest peptide: {short_len} amino acids\n')
+        file.write(f'\t- Longest peptide: {long_len} amino acids\n')
+
+    input = input('Do you want to sort the peptides ? [y/n]: ')
+    if input == 'y':
+        print(f'Sorting command: \n')
+        print(f"""python AMP_sorter.py --input_path {gen_path} --output_path -d""")
+        subprocess.run(f"""python AMP_sorter.py --input_path {gen_path} --output_path -d""")
+    else:
+        pass
 
 if __name__ == "__main__":
     main()

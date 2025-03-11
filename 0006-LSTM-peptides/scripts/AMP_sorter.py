@@ -2,34 +2,34 @@ from Bio.SeqUtils.ProtParam import ProteinAnalysis
 from Bio.SeqUtils.IsoelectricPoint import IsoelectricPoint as IP
 from modlamp.descriptors import GlobalDescriptor
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 import argparse
-
-
-class SorterArgs:
-    def __init__(self):
-        self.input_path = '../data/generation_peptides.fasta'
-        self.sorting_path = '../data/sorted_peptides.fasta'
-        self.output_path = '../data/potential_amp.fasta'
-
+import os
+import datetime
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and test LSTM model for peptide sequences')
 
     parser.add_argument('--input_path', type=str, required=True, help='Path to file with initial generated peptides (FASTA format)')
-    parser.add_argument('--sorting_path', type=str, required=True, help='Path to file in which to store the sorted peptides (FASTA format)')
-    parser.add_argument('--output_path', type=str, required=True, help='Path to file in which to store the 20 best potential AMPs (FASTA format)')
+    parser.add_argument('--sorting_path', type=str, default='-d', help='Path to file in which to store the sorted peptides (FASTA format), default: -d')
 
     args = parser.parse_args()
-
     return args
 
 args = parse_args()
 
 
 def fasta_to_df(filepath):
+    """
+    Converts a FASTA file containing peptide sequences into a pandas DataFrame.
+
+    Args:
+        filepath (str): Path to the FASTA file.
+
+    Returns:
+        peptides_df (pandas.DataFrame): A DataFrame with a single column 'Sequence' containing the peptide sequences.
+    """
     with open(filepath, 'r') as fasta_file:
         fasta = fasta_file.readlines()
         fasta = [pep.strip() for pep in fasta if pep.strip()]
@@ -39,55 +39,47 @@ def fasta_to_df(filepath):
                 peptides.append(line)
 
     peptides_df = pd.DataFrame(peptides, columns=['Sequence'])
-    peptides_df = peptides_df[~peptides_df['Sequence'].str.contains('U')]  # "~" negates the condition
+    peptides_df = peptides_df[~peptides_df['Sequence'].str.contains('U')]
 
     return peptides_df
 
 
 def df_to_fasta(filepath, df):
+    """
+    Writes a pandas Dataframe containing peptide sequences into a FASTA file.
+
+    Args:
+        - filepath (str): Path to the FASTA file.
+        - df (pandas.Dataframe):
+
+    Returns:
+        peptides_df (pandas.DataFrame): A DataFrame with a single column 'Sequence' containing the peptide sequences.
+    """
     with open(filepath, 'w') as fasta_file:
         for i, seq in enumerate(df['Sequence']):
-            # Format each peptide into FASTA format
             fasta_entry = f'>peptide_{i + 1}\n{seq}\n'
-            fasta_file.write(fasta_entry)  # Write each FASTA entry to the file
+            fasta_file.write(fasta_entry)
     print(f'Peptides stored in FASTA format at: {filepath}')
 
 
-def plot_helical_wheel(angles, n_residues, peptide):
-    polar_AA = ['S', 'T', 'N', 'Q', 'D', 'E', 'K', 'R', 'H']
+def amphiphilicity_calculator(peptide):
+    """
+    Calculates the amphiphilicity of a peptide by projecting the peptide into a helix on a plane.
 
-    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw={'projection': 'polar'})
-    colors = ['blue' if aa in polar_AA else 'orange' for aa in peptide]
+    Args:
+        peptide (str): Amino acid sequence of the peptide.
 
-    for i in range(n_residues):
-        ax.scatter(np.radians(angles[i]), 1, c=colors[i], s=100, zorder=3)
-
-    ax.plot(np.radians(angles), np.ones(n_residues), color='grey', lw=1, zorder=2)
-
-    for i, (residue, angle) in enumerate(zip(peptide, angles)):
-        ax.text(np.radians(angle), 1.1, residue, ha='center', va='center', fontsize=12, color='black', zorder=4)
-
-    ax.set_yticklabels([])
-    ax.set_xticklabels([])
-    ax.set_ylim(0, 1.5)
-    ax.set_title('Helical Wheel Projection', fontsize=16)
-    plt.show()
-
-
-def amphiphilicity_calculator(peptide, plot=False):
+    Returns:
+        H_star (float): The amphiphilicity index of the peptide.
+    """
     n_residues = len(peptide)
     angle_step = 100
     angles = np.arange(0, n_residues * angle_step, angle_step) % 360
     polar_AA = ['S', 'T', 'N', 'Q', 'D', 'E', 'K', 'R', 'H']
 
-    if plot:
-        plot_helical_wheel(angles, n_residues, peptide)
-
     theta = np.arange(0, 360, 5)
     polar_AA_total = sum(1 for aa in peptide if aa in polar_AA)
-
     polar_AA_max = 0
-    best_theta = 0
 
     for j in theta:
         lower_limit = j
@@ -119,6 +111,15 @@ def amphiphilicity_calculator(peptide, plot=False):
 
 
 def hydrophobic_percentage(peptide):
+    """
+    Calculates the percentage of hydrcophobic residues of a peptide.
+
+    Args:
+        peptide (str): Amino acid sequence of the peptide.
+
+    Returns:
+        percentage (float): Percentage of hydrophobic residues in the peptide.
+    """
     hydrophobic_residues = {'A', 'V', 'I', 'L', 'M', 'F', 'W', 'Y', 'P'}
     total_length = len(peptide)
     hydrophobic_count = sum(1 for aa in peptide if aa in hydrophobic_residues)
@@ -127,22 +128,62 @@ def hydrophobic_percentage(peptide):
 
 
 def charge_calculator(peptide):
+    """
+    Calculates the charge of a peptide using the Bio package.
+
+    Args:
+        peptide (str): Amino acid sequence of the peptide
+
+    Returns:
+        charge (float): The charge of the amino acid at pH 7.4.
+    """
     X = ProteinAnalysis(peptide)
     charge = X.charge_at_pH(7.4)
     return charge
 
+
 def boman_index(peptide):
+    """
+    Calculates the binding index of a peptide (Boman index) using the modlamp package.
+
+    Args:
+        peptide (str): Amino acid sequence of the peptide
+
+    Returns:
+        desc.descriptor (float): The descriptor containing the Boman index of the peptide.
+    """
     desc = GlobalDescriptor(peptide)
     desc.boman_index()
     return desc.descriptor
 
+
 def isoelectric_point(peptide):
+    """
+    Calculates the isoelectric point of a peptide using the Bio package.
+
+    Args:
+        peptide (str): amino acid sequence of the peptide
+
+    Returns:
+        ip (float): Isoelectric point of the peptide.
+    """
+
     X = IP(peptide)
     ip = X.pi()
     return ip
 
 
 def amp_sorter(fasta_file_input, fasta_file_output):
+    """
+    Sorts the peptides from a FASTA file.
+
+    Args:
+        fasta_file_output (str): FASTA file with peptides to sort.
+
+    Returns:
+        fasta_file_output (str): FASTA file with sorted peptides.
+    """
+    #Calculate descriptors of the peptides in the FASTA file.
     peptide_df = fasta_to_df(fasta_file_input)
     peptide_df['Hydrophobic residues percentage'] = peptide_df['Sequence'].apply(lambda x: hydrophobic_percentage(x))
     peptide_df['Charge (pH 7.4)'] = peptide_df['Sequence'].apply(lambda x: charge_calculator(x))
@@ -150,6 +191,10 @@ def amp_sorter(fasta_file_input, fasta_file_output):
     peptide_df['Boman index'] = peptide_df['Sequence'].apply(lambda x: boman_index(x))
     peptide_df['Isoelectric point'] = peptide_df['Sequence'].apply(lambda x: isoelectric_point(x))
 
+    initial_length = len(peptide_df)
+    print(f'Initial number of peptides: {initial_length}')
+
+    #Sort the peptides using threshold values based on DRAMP database and RW lexicon.
     peptide_df = peptide_df.query("`Hydrophobicity percentage` > 0.35")
     peptide_df = peptide_df.query("`Hydrophobicity percentage` < 0.7")
     peptide_df = peptide_df.query("`Charge (pH 7.4)` > 2")
@@ -159,21 +204,31 @@ def amp_sorter(fasta_file_input, fasta_file_output):
     peptide_df = peptide_df.query('`Boman index` < 8 ')
     peptide_df = peptide_df.query('`Isoelectric point` > 10 ')
 
+    output_length = len(peptide_df)
+    print(f'Number of peptides after sorting: {output_length}')
+
+    #Puts the sorted peptides into the output file
     df_to_fasta(fasta_file_output, peptide_df)
+    return initial_length, output_length
 
 
 def main():
-
     input_filepath = args.input_path
-    output_filepath = args.sorting_path
+    today = datetime.today().strftime("%d-%m-%Y")
+    base_dir = f"../data/gen_{today}"
+    gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
+    gen_dir = os.path.join(base_dir, f"gen_{today}", f"generated_peptides_{gen_count}")
+    if args.output_filepath == '-d':
+        output_filepath = os.path.join(gen_dir, 'sorted_peptides.fasta')
+    else:
+        output_filepath = args.sorting_path
 
-    amp_sorter(input_filepath, output_filepath)
+    initial_length, output_length = amp_sorter(input_filepath, output_filepath)
+
+    sum_path = os.path.join(gen_dir, "generation_summary.txt")
+    with open(sum_path, 'a') as file:
+        file.write(f'\n Sorting summary: ')
 
 
 if __name__ == '__main__':
     main()
-
-
-
-
-

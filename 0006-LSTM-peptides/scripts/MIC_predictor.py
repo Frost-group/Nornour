@@ -4,6 +4,8 @@ import math
 from propy import PyPro
 import numpy as np
 import argparse
+import os
+import datetime
 
 import torch
 import torch.nn as nn
@@ -14,32 +16,11 @@ from torch.utils.data import Dataset, DataLoader, random_split
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
-class MICArgs:
-    def __init__(self):
-        self.data_path = '../../0003e-DRAMP-MIC-database/DRAMP_MIC_p_aeruginosa.csv'
-        self.batch_size = 8
-        self.epochs = 50
-        self.embedding_dim = 100
-        self.hidden_dim = 256
-        self.num_layers = 2
-        self.dropout = 0.5
-        self.learning_rate = 1e-3
-        self.weight_decay = 1e-5
-        self.max_seq_len = 15
-        self.accuracy_percentage = 10.0
-        self.train_ratio = 0.8
-        self.vocab_size = 21
-        self.train = False
-        self.save_model = False
-        self.model_path = '../models/bi_lstm_peptides_model.pt'
-        self.peptide_path = '../data/sorted_peptides.fasta'
-        self.prediction_path = '../data/predictions.csv'
-
 
 def get_args():
     parser = argparse.ArgumentParser(description="Train and evaluate an LSTM-based peptide activity predictor.")
 
-    parser.add_argument('--data_path', type=str, required=True, help="Path to the input dataset (CSV file).")
+    parser.add_argument('--data_path', type=str, default='../../0003e-DRAMP-MIC-database/DRAMP_MIC_p_aeruginosa.csv', help="Path to the input dataset (CSV file).")
     parser.add_argument('--batch_size', type=int, default=32, help="Batch size for training and evaluation.")
     parser.add_argument('--epochs', type=int, default=50, help="Number of training epochs.")
     parser.add_argument('--embedding_dim', type=int, default=128, help="Dimension of sequence embedding layer.")
@@ -52,36 +33,15 @@ def get_args():
     parser.add_argument('--accuracy_percentage', type=float, default=10.0, help="Percentage range for accuracy calculation.")
     parser.add_argument('--train_ratio', type=float, default=0.8, help="Proportion of data used for training.")
     parser.add_argument('--vocab_size', type=int, default=21, help='Vocabulary size (number of amino acids')
-    parser.add_argument('--train', type=bool, default=False, help='Whether to train the model before prediction')
+    parser.add_argument('--train', type=bool, default=True, help='Whether to train the model before prediction')
     parser.add_argument('--save_model', type=bool, default=False, help="Whether to save the model after training")
-    parser.add_argument('--model_path', type=str, default='bi_lstm_peptides_model.pt', help='Path to file where to save the model')
-    parser.add_argument('--peptide_path', type=str, default='../0006b-LSTM-data/sorted_peptides.fasta', help='Path where the peptides used for prediction are taken fromPath to file where to save the MIC prediction of peptides')
-    parser.add_argument('--prediction_path', type=str, default='../0006b-LSTM-data/predictions.csv')
+    parser.add_argument('--model_path', type=str, default='../models/bi_lstm_peptides_model.pt', help='Path to file where to save the model')
+    parser.add_argument('--peptide_path', type=str, default='-d', help='Path where the peptides used for prediction are taken from')
+    parser.add_argument('--prediction_path', type=str, default='-d', help='Path where the peptides are stored along with the predicted MIC')
 
     args = parser.parse_args()
 
-    mic_args = MICArgs()
-
-    mic_args.data_path = args.data_path
-    mic_args.batch_size =  args.batch_size
-    mic_args.epochs =  args.epochs
-    mic_args.embedding_dim =  args.embedding_dim
-    mic_args.hidden_dim =   args.hidden_dim
-    mic_args.num_layers =  args.num_layers
-    mic_args.dropout =  args.dropout
-    mic_args.learning_rate =  args.learning_rate
-    mic_args.weight_decay =  args.weight_decay
-    mic_args.max_seq_len = args.max_seq_len
-    mic_args.accuracy_percentage = args.accuracy_percentage
-    mic_args.train_ratio = args.train_ratio
-    mic_args.vocab_size = args.vocab_size
-    mic_args.train = args.train
-    mic_args.save_model = args.save_model
-    mic_args.model_path = args.model_path
-    mic_args.peptide_path = args.peptide_path
-    mic_args.prediction_path = args.prediction_path
-
-    return mic_args
+    return args
 
 args = get_args()
 
@@ -188,6 +148,15 @@ def desc_to_df(df):
 
 
 def fasta_to_df(filepath):
+    """
+    Converts a FASTA file containing peptide sequences into a pandas DataFrame.
+
+    Args:
+        filepath (str): Path to the FASTA file.
+
+    Returns:
+        peptides_df (pandas.DataFrame): A DataFrame with a single column 'Sequence' containing the peptide sequences.
+    """
     with open(filepath, 'r') as fasta_file:
         fasta = fasta_file.readlines()
         fasta = [pep.strip() for pep in fasta if pep.strip()]
@@ -197,25 +166,44 @@ def fasta_to_df(filepath):
                 peptides.append(line)
 
     peptides_df = pd.DataFrame(peptides, columns=['Sequence'])
-    peptides_df = peptides_df[~peptides_df['Sequence'].str.contains('U')]  # "~" negates the condition
-
+    peptides_df = peptides_df[~peptides_df['Sequence'].str.contains('U')]
     return peptides_df
 
 
 def process_dataframe(df, model, max_seq_len, min_mic, max_mic, mins_ctd, mins_qso, maxs_ctd, maxs_qso,
                       accuracy_percentage):
+    """
+    Processes a DataFrame of peptide sequences by predicting their activity using a specified model.
+
+    Args:
+        df (pandas.DataFrame): DataFrame containing a 'Sequence' column with peptide sequences.
+        model (object): The trained model used for activity prediction.
+        max_seq_len (int): Maximum allowable sequence length for prediction.
+        min_mic (float): Minimum MIC value for normalization.
+        max_mic (float): Maximum MIC value for normalization.
+        mins_ctd (array-like): Minimum values for CTD feature normalization.
+        mins_qso (array-like): Minimum values for QSO feature normalization.
+        maxs_ctd (array-like): Maximum values for CTD feature normalization.
+        maxs_qso (array-like): Maximum values for QSO feature normalization.
+        accuracy_percentage (float): Percentage tolerance for confidence interval calculations.
+
+    Returns:
+        pandas.DataFrame: The input DataFrame with additional columns:
+            - 'pred_mic': Predicted MIC values.
+            - 'lower_bound': Lower bound of the confidence interval.
+            - 'upper_bound': Upper bound of the confidence interval.
+            - 'tolerance_range': The calculated tolerance range for prediction accuracy.
+    """
     results = df['Sequence'].apply(lambda seq: activity_predictor(seq, model, max_seq_len, min_mic, max_mic,
                                                                   mins_ctd, mins_qso, maxs_ctd, maxs_qso,
                                                                   accuracy_percentage))
-
     # Unpack results and assign to new columns
     df[['pred_mic', 'lower_bound', 'upper_bound', 'tolerance_range']] = pd.DataFrame(results.tolist(), index=df.index)
-
     return df
 
 
 class PeptideDataset(Dataset):
-    def __init__(self, dataframe, max_seq_len=50):
+    def __init__(self, dataframe, max_seq_len=15):
         """
         Initialize the PeptideDataset.
 
@@ -355,9 +343,9 @@ class LSTMActivityPredictor(nn.Module):
         combined_desc = torch.cat([aa_comp_out, ctd_out, qso_out], dim=1)
         combined_desc_2 = self.fc_intermediate(combined_desc)
 
-        #combining and FC layer to get MIC value
+        #combining and FC layer to get MIC value. Values are projected between 0 and 1 using a sigmoid function.
         combined = torch.cat([lstm_out, combined_desc_2], dim=1)
-        MIC_val = self.fc_final(combined) # [batch_size, 1]
+        MIC_val = torch.sigmoid(self.fc_final(combined)) # [batch_size, 1]
 
         return MIC_val, (h_f, c_f)
 
@@ -403,16 +391,15 @@ def train(dataloader, model, epochs, percentage=10):
                 lower_bound = labels - tolerance_range
                 upper_bound = labels + tolerance_range
 
-
                 correct_preds = (preds.view(-1) >= lower_bound) & (preds.view(-1) <= upper_bound)
                 accuracy = correct_preds.float().sum() / correct_preds.numel()
                 epoch_accuracy += accuracy.item()
 
-                avg_epoch_loss = epoch_loss / num_batches
-                avg_epoch_accuracy = epoch_accuracy / num_batches
-
                 pbar.update(1)
-                pbar.set_postfix(loss=avg_epoch_loss, accuracy=avg_epoch_accuracy)
+                pbar.set_postfix(loss=epoch_loss/num_batches, accuracy=epoch_accuracy/num_batches)
+
+            avg_epoch_loss = epoch_loss / num_batches
+            avg_epoch_accuracy = epoch_accuracy / num_batches
 
     print('-------End of Training--------\n-----------------------------\n')
 
@@ -522,16 +509,17 @@ def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, mins_ctd,
 
 def main():
     args = get_args()
-
-
-    # Create an empty list to store rows
     data = []
+    if args.data_path == '-d':
+        today = datetime.today().strftime("%d-%m-%Y")
+        base_dir = f"../data/gen_{today}"
+        gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
+        data_path = f'{base_dir}/generated_peptides_{gen_count}/sorted_peptides.fasta'
+    else:
+        data_path = args.data_path
 
-    with open(args.data_path, "r") as infile:
-    # Read the header line
+    with open(data_path, "r") as infile:
         headers = infile.readline().strip()
-
-         # Process each subsequent line
         for line in infile:
             columns = line.strip().split(",")
             data.append(columns)
@@ -546,6 +534,7 @@ def main():
     max_val = df['log10_Standardised_MIC'].max()
     df['scaled_log10_MIC'] = (df['log10_Standardised_MIC'] - min_val) / (max_val - min_val)
 
+    #calculation of descriptors for input peptides
     df, dims, mins_ctd, maxs_ctd, mins_qso, maxs_qso = desc_to_df(df)
     aa_comp_dim, ctd_dim, qso_dim = dims[0], dims[1], dims[2]
 
@@ -587,10 +576,18 @@ def main():
     else:
         model.load_state_dict(torch.load(args.model_path, weights_only=True))
 
+    if args.prediction_path == '-d':
+        today = datetime.today().strftime("%d-%m-%Y")
+        base_dir = f"../data/gen_{today}"
+        gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
+        prediction_path = f'{base_dir}/generated_peptides_{gen_count}/MIC_predictions.csv'
+    else:
+        prediction_path = args.prediction_path
+
     peptides_df = fasta_to_df(args.peptide_path)
     peptides_df = process_dataframe(peptides_df, model, args.max_seq_len, min_val, max_val, mins_ctd, mins_qso, maxs_ctd, maxs_qso,
                       args.accuracy_percentage)
-    peptides_df.to_csv(args.prediction_path, index=False)
+    peptides_df.to_csv(prediction_path, index=False)
 
 
 if __name__ == "__main__":

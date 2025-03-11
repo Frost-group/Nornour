@@ -2,7 +2,6 @@ import requests
 import argparse
 import pandas as pd
 from bs4 import BeautifulSoup
-import subprocess
 
 class SorterArgs:
     def __init__(self):
@@ -93,3 +92,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+"""
+ampep train -p training_data/M_model_train_AMP_sequence.numbered.fasta -n training_data/M_model_train_nonAMP_sequence.numbered.proplen.subsample.fasta --seed 2012
+ampep predict -m amPEP.model -i ampep predict -m amPEP.model -i /Users/gonterigor/Documents/Imperial/Research/Other_coding/MIC_prediction/New_fasta.fasta -o /Users/gonterigor/Documents/Imperial/Research/Other_coding/MIC_prediction/output.tsv --seed 2012
+"""

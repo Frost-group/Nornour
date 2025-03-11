@@ -7,60 +7,31 @@ import math
 import wandb
 import argparse
 from tqdm import tqdm
+import os
+import datetime
+import subprocess
 
 wandb.login()
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
-
-
-class LSTMArgs:
-    def __init__(self):
-        self.dataset_path = '../../0003b-RW-Lexicon/RW_lexicon.dat'
-        self.output_size = 22
-        self.epochs = 50
-        self.batch_size = 8
-        self.learning_rate = 0.00063
-        self.hidden_size = 256
-        self.layers = 2
-        self.dropout = 0.7
-        self.max_length = 0
-        self.vocab = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U',
-                      'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V', '_']
-        self.save_model = False
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and test LSTM model for peptide sequences')
 
-    parser.add_argument('--dataset_path', type=str, required=True, help='Path to the dataset to use for training')
-    parser.add_argument('--output_size', type=int, default=22, help='Size of the output layer (default: 22)')
-    parser.add_argument('--epochs', type=int, default=50, help='Number of epochs for training (default: 100)')
-    parser.add_argument('--batch_size', type=int, default=8, help='Batch size for training and testing (default: 8)')
-    parser.add_argument('--learning_rate', type=float, default=0.00063, help='Learning rate (default: 0.01)')
-    parser.add_argument('--hidden_size', type=int, default=256, help='Hidden layer size (default: 128)')
-    parser.add_argument('--layers', type=int, default=2, help='Number of LSTM layers (default: 3)')
-    parser.add_argument('--dropout', type=float, default=0.7, help='Dropout rate (default: 0.5)')
-    parser.add_argument('--max_length', type=int, default=0, help='Maximum peptide length')
-    parser.add_argument('--vocabulary', type=str, default= "RHKDESTNQCUGPAILMFWYV_", help='List of amino acids and padding index')
+    parser.add_argument('--dataset_path', type=str, default='../../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides', help='Path to the dataset to use for training')
+    parser.add_argument('--output_size', type=int, default=21, help='Size of the output layer (default: 22)')
+    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs for training (default: 100)')
+    parser.add_argument('--batch_size', type=int, default=256, help='Batch size for training and testing (default: 256)')
+    parser.add_argument('--learning_rate', type=float, default=0.00063, help='Learning rate (default: 0.00063)')
+    parser.add_argument('--hidden_size', type=int, default=128, help='Hidden layer size (default: 128)')
+    parser.add_argument('--layers', type=int, default=3, help='Number of LSTM layers (default: 3)')
+    parser.add_argument('--dropout', type=float, default=0.5, help='Dropout rate (default: 0.5)')
+    parser.add_argument('--max_length', type=int, default=15, help='Maximum peptide length (default: 15)')
+    parser.add_argument('--vocabulary', type=str, default= "RHKDESTNQCGPAILMFWYV_", help='List of amino acids and padding index')
     parser.add_argument('--save_model', type=bool, default=False, help='Save the trained model (default: False)')
 
-    args = parser.parse_args()
-
-    lstm_args = LSTMArgs()
-    lstm_args.dataset_path = args.dataset_path
-    lstm_args.output_size = args.output_size
-    lstm_args.epochs = args.epochs
-    lstm_args.batch_size = args.batch_size
-    lstm_args.learning_rate = args.learning_rate
-    lstm_args.hidden_size = args.hidden_size
-    lstm_args.layers = args.layers
-    lstm_args.dropout = args.dropout
-    lstm_args.vocab = list(args.vocabulary)
-    lstm_args.max_length = args.max_length
-    lstm_args.save_model = args.save_model
-
-    return lstm_args
+    return args
 
 
 args = parse_args()
@@ -402,17 +373,14 @@ def train(peptides, model):
                 pbar.update(1)
                 pbar.set_postfix(loss=loss.item(), accuracy=accuracy)
 
-
         avg_epoch_loss = epoch_loss / num_batches
         avg_epoch_accuracy = epoch_accuracy / num_batches
-
-
 
         print(f"Epoch [{epoch + 1}/{wandb.config.epochs}], Loss: {avg_epoch_loss}, Accuracy: {avg_epoch_accuracy}")
 
     print('-------End of Training--------\n-----------------------------\n')
 
-
+    return round(avg_epoch_loss, 6), round(avg_epoch_accuracy, 4)
 
 def test(test_data, model, batch_size):
     """
@@ -465,6 +433,7 @@ def test(test_data, model, batch_size):
     print(f'Test Error: \n Accuracy: {100 * test_accuracy:.2f}%, Avg loss: {test_loss:.4f} \n')
     print('------End of testing--------\n-----------------------------')
 
+    return round(test_loss, 6), round(test_accuracy, 4)
 
 
 if __name__ == "__main__":
@@ -487,28 +456,60 @@ if __name__ == "__main__":
 
     model = LSTMPeptides(long_pep)
 
-    train(train_data, model)
+    avg_epoch_loss, avg_epoch_accuracy = train(train_data, model)
 
-    test(test_data, model, wandb.config.batch_size)
+    test_loss, test_accuracy = test(test_data, model, wandb.config.batch_size)
 
     if args.save_model:
         model_path = "../models/lstm_peptides_model.pt"
         torch.save(model.state_dict(), model_path)
         print(f"Model saved to {model_path}")
 
-    print('Command to run for peptide generation: \n')
-    print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path lstm_peptides_model.pt --output_path ../0006b-LSTM-data/generation_output.fasta --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 100 --min_length 2 --max_length 15 --seed 'r' """)
+    today = datetime.today().strftime("%d-%m-%Y")
+    base_dir = "../data"
+    gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
+    gen_dir = os.path.join(base_dir, f"gen_{today}", f"generated_peptides_{gen_count}")
+    os.makedirs(gen_dir, exist_ok=True)
+    print(f"Directory created: {gen_dir}")
 
-"""
-Command to run code:
+    sum_path = os.path.join(gen_dir, "generation_summary.txt")
+    with open(sum_path, 'w') as file:
+        file.write(f'Generation number {gen_count}, created on {today}, workflow summary.\n\n')
+        file.write('LSTM training summary: \n')
+        for arg, value in vars(args).items():
+            file.write(f'\t- {arg}: {value}\n')
+        file.write('Accuracies and losses: \n')
+        file.write(f'\t- training loss after last epoch: {avg_epoch_loss}\n')
+        file.write(f'\t- training accuracy after last epoch: {avg_epoch_accuracy}\n')
+        file.write(f'\t- test loss: {test_loss}\n')
+        file.write(f'\t- test_accuracy: {test_accuracy}\n')
 
-python LSTM-peptide-model.py  --dataset_path ../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides --output_size 22 --epochs 15 --batch_size 256 --learning_rate 0.000063 --hidden_size 256 --layers 2 --dropout 0.7 --max_length 15 --vocabulary "RHKDESTNQCUGPAILMFWYV_"  --save_model True
-"""
+    input = input('Do you want to run peptide generation ? [y/n]: ')
+    if input == 'y':
+        print(f'Generation command: \n')
+        print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path lstm_peptides_model.pt --output_path {args.output_path} --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 40000 --min_length 1 --max_length 15 --seed -r """)
+        config_input = input('Keep configuration ? [y/n]: ')
+        if config_input == 'n':
+            temperature_input = input('Temperature (float): ')
+            num_sequences_input = input('Number of sequences (int): ')
+            max_length_input = input('Max length (int): ')
+            min_length_input = input('Min length (int): ')
+            seed_input = input('Seed (str), -r for random: ')
+        else:
+            temperature_input = 1.0
+            num_sequences_input = 40000
+            max_length_input = 15
+            min_length_input = 2
+            seed_input = '-r'
+
+        subprocess.run(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path {args.model_path} --output_path -d --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature {temperature_input} --num_sequences {num_sequences_input} --min_length {min_length_input} --max_length {max_length_input} --seed {seed_input} """)
+    else:
+        pass
 
 """
 Optimal hyperparam RW_lexicon:
 
---output_size 22
+--output_size 21
 --epochs 20
 --batch_size 8
 --learning_rate 0.00063
