@@ -1,0 +1,49 @@
+{
+  "os": "macOS-15.3.1-arm64-arm-64bit",
+  "python": "CPython 3.12.7",
+  "startedAt": "2025-03-11T17:14:12.969321Z",
+  "args": [
+    "--epochs",
+    "2",
+    "--save_model",
+    "False"
+  ],
+  "program": "/Users/gonterigor/Documents/Imperial/Research/Nornour/0006-LSTM-peptides/scripts/LSTM-peptide-model.py",
+  "codePath": "0006-LSTM-peptides/scripts/LSTM-peptide-model.py",
+  "git": {
+    "remote": "https://github.com/Frost-group/Nornour",
+    "commit": "e4927110ae84b2adae582b6e93ebd4e876ab6f58"
+  },
+  "email": "igor.gonteri@epfl.ch",
+  "root": "/Users/gonterigor/Documents/Imperial/Research/Nornour/0006-LSTM-peptides/scripts",
+  "host": "Igors-MacBook-Air.local",
+  "executable": "/opt/anaconda3/bin/python",
+  "codePathLocal": "LSTM-peptide-model.py",
+  "cpu_count": 8,
+  "cpu_count_logical": 8,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "83659419648"
+    },
+    "/System/Volumes/Data": {
+      "total": "494384795648",
+      "used": "83659419648"
+    }
+  },
+  "memory": {
+    "total": "25769803776"
+  },
+  "cpu": {
+    "count": 8,
+    "countLogical": 8
+  },
+  "apple": {
+    "name": "Apple M3",
+    "ecpuCores": 4,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 24,
+    "ramTotalBytes": "25769803776"
+  }
+}

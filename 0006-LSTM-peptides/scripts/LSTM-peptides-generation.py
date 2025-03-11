@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import argparse
 import random
 import os
-import datetime
+from datetime import datetime
 import subprocess
 
 
@@ -16,20 +16,20 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train and generate peptides using LSTM model')
 
     parser.add_argument('--dataset_path', type=str, default='../../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides', help='Path to the dataset used for training')
-    parser.add_argument('--output_path', type=str, default='-d', help='Path to the output file for generated sequences (.fasta format), -d for default file storage')
+    parser.add_argument('--output_path', type=str, default='d', help='Path to the output file for generated sequences (.fasta format), -d for default file storage')
     parser.add_argument('--model_path', type=str, default='../models/lstm_peptides_model.pt', help='Path to the trained model')
     parser.add_argument('--output_size', type=int, default=21, help='Size of the output layer (default: 22)')
-    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs for training')
-    parser.add_argument('--batch_size', type=int, default=256, help='Batch size')
+    parser.add_argument('--epochs', type=int, default=50, help='Number of epochs for training')
+    parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
     parser.add_argument('--learning_rate', type=float, default=0.00063, help='Learning rate')
-    parser.add_argument('--hidden_size', type=int, default=128, help='Hidden layer size')
-    parser.add_argument('--layers', type=int, default=3, help='Number of LSTM layers')
-    parser.add_argument('--dropout', type=float, default=0.5, help='Dropout rate')
+    parser.add_argument('--hidden_size', type=int, default=256, help='Hidden layer size')
+    parser.add_argument('--layers', type=int, default=2, help='Number of LSTM layers')
+    parser.add_argument('--dropout', type=float, default=0.7, help='Dropout rate')
     parser.add_argument('--temperature', type=float, default=1.0, help='Sampling temperature for generation')
     parser.add_argument('--num_sequences', type=int, default=40000, help='Number of unique sequences to generate')
     parser.add_argument('--min_length', type=int, default=1, help='Minimum peptide length')
     parser.add_argument('--max_length', type=int, default=15, help='Maximum peptide length')
-    parser.add_argument('--seed', type=str, default='-r', help="Seed sequence for generation, put '-r' for automated seed generation")
+    parser.add_argument('--seed', type=str, default='r', help="Seed sequence for generation, put '-r' for automated seed generation")
     args = parser.parse_args()
 
     return args
@@ -111,7 +111,7 @@ class LSTMPeptides(nn.Module):
         self.len_vocab = len(self.vocab)
 
         self.embedding_dim = 128
-        self.embedding = nn.Embedding(num_embeddings=self.len_vocab, embedding_dim=self.embedding_dim, padding_idx=21)
+        self.embedding = nn.Embedding(num_embeddings=self.len_vocab, embedding_dim=self.embedding_dim, padding_idx=20)
 
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_size, self.layers, batch_first=True)
         self.dropout_layer = nn.Dropout(p=self.dropout)
@@ -283,7 +283,7 @@ def gen_peptides(model, seed, number_aa, vocab, device, temperature=1.0):
     """
 
 
-    if seed == '-r':
+    if seed == 'r':
         gen_seq = weighted_seed()
     else:
         gen_seq = seed
@@ -399,7 +399,7 @@ def main():
     base_dir = "../data"
     gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
     gen_dir = os.path.join(base_dir, f"gen_{today}", f"generated_peptides_{gen_count}")
-    if args.output_path == '-d':
+    if args.output_path == 'd':
         gen_path = os.path.join(gen_dir, "gen_peptides.fasta")
 
     else:
@@ -424,8 +424,13 @@ def main():
     input = input('Do you want to sort the peptides ? [y/n]: ')
     if input == 'y':
         print(f'Sorting command: \n')
-        print(f"""python AMP_sorter.py --input_path {gen_path} --output_path -d""")
-        subprocess.run(f"""python AMP_sorter.py --input_path {gen_path} --output_path -d""")
+        print(f"""python AMP_sorter.py --input_path {gen_path} --output_path d""")
+        subprocess.run([
+            "python",
+            "AMP_sorter.py",
+            "--input_path", gen_path,
+            "--output_path", "d"
+        ])
     else:
         pass
 

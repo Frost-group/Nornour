@@ -5,7 +5,8 @@ from propy import PyPro
 import numpy as np
 import argparse
 import os
-import datetime
+from datetime import datetime
+import subprocess
 
 import torch
 import torch.nn as nn
@@ -36,8 +37,8 @@ def get_args():
     parser.add_argument('--train', type=bool, default=True, help='Whether to train the model before prediction')
     parser.add_argument('--save_model', type=bool, default=False, help="Whether to save the model after training")
     parser.add_argument('--model_path', type=str, default='../models/bi_lstm_peptides_model.pt', help='Path to file where to save the model')
-    parser.add_argument('--peptide_path', type=str, default='-d', help='Path where the peptides used for prediction are taken from')
-    parser.add_argument('--prediction_path', type=str, default='-d', help='Path where the peptides are stored along with the predicted MIC')
+    parser.add_argument('--peptide_path', type=str, default='d', help='Path where the peptides used for prediction are taken from')
+    parser.add_argument('--prediction_path', type=str, default='d', help='Path where the peptides are stored along with the predicted MIC')
 
     args = parser.parse_args()
 
@@ -403,6 +404,8 @@ def train(dataloader, model, epochs, percentage=10):
 
     print('-------End of Training--------\n-----------------------------\n')
 
+    return round(avg_epoch_loss, 6), round(avg_epoch_accuracy, 4)
+
 
 def activity_test(dataloader, model, percentage=10):
     """
@@ -449,7 +452,7 @@ def activity_test(dataloader, model, percentage=10):
     avg_test_accuracy = test_accuracy / num_batches
 
     print(f"Test Loss: {avg_test_loss:.4f}, Test Accuracy: {avg_test_accuracy * 100:.2f}%")
-    return avg_test_loss, avg_test_accuracy
+    return round(avg_test_loss, 6), round(avg_test_accuracy, 4)
 
 
 def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, mins_ctd, mins_qso, maxs_ctd, maxs_qso, accuracy_percentage):
@@ -472,6 +475,7 @@ def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, mins_ctd,
         - pred_mic (float): Predicted MIC value in µM.
         - lower_bound (float): Lower bound of the MIC confidence interval in µM.
         - upper_bound (float): Upper bound of the MIC confidence interval in µM.
+        - tolerance_range (float): Tolerance range of the MIC around the predicted value in µM.
     """
     aa_comp, ctd, qso = calculate_descriptors(sequence)
     aa_comp_normalized = [val / 100 for val in aa_comp]
@@ -504,7 +508,7 @@ def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, mins_ctd,
     lower_bound = pred_mic - tolerance_range
     upper_bound = pred_mic + tolerance_range
 
-    return pred_mic.item(), lower_bound.item(), upper_bound.item(), tolerance_range.item()
+    return round(pred_mic.item(), 6), round(lower_bound.item(), 6), round(upper_bound.item(), 6), round(tolerance_range.item(), 6)
 
 
 def main():
@@ -562,7 +566,7 @@ def main():
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
         test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
 
-        train(
+        train_loss, train_accuracy =train(
             train_loader,
             model,
             epochs=args.epochs,
@@ -576,19 +580,60 @@ def main():
     else:
         model.load_state_dict(torch.load(args.model_path, weights_only=True))
 
+    today = datetime.today().strftime("%d-%m-%Y")
+    base_dir = f"../data/gen_{today}"
+    gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
+    gen_dir = os.path.join(base_dir, f"gen_{today}", f"generated_peptides_{gen_count}")
+
     if args.prediction_path == '-d':
-        today = datetime.today().strftime("%d-%m-%Y")
-        base_dir = f"../data/gen_{today}"
-        gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
-        prediction_path = f'{base_dir}/generated_peptides_{gen_count}/MIC_predictions.csv'
+        prediction_path = os.path.join(gen_dir, 'MIC_predictions.csv')
     else:
         prediction_path = args.prediction_path
 
     peptides_df = fasta_to_df(args.peptide_path)
-    peptides_df = process_dataframe(peptides_df, model, args.max_seq_len, min_val, max_val, mins_ctd, mins_qso, maxs_ctd, maxs_qso,
-                      args.accuracy_percentage)
+    peptides_df = process_dataframe(peptides_df, model, args.max_seq_len, min_val, max_val, mins_ctd, mins_qso,
+                                    maxs_ctd, maxs_qso,
+                                    args.accuracy_percentage)
+    min_pred_mic = peptides_df['pred_mic'].min()
+    max_pred_mic = peptides_df['pred_mic'].max()
+    mean_pred_mic = peptides_df['pred_mic'].mean()
     peptides_df.to_csv(prediction_path, index=False)
 
+    sum_path = os.path.join(gen_dir, 'generation_summary.txt')
+
+    with open(sum_path, 'w') as file:
+        file.write('\nMIC prediction summary: \n')
+        file.write('Hyperparameters: ')
+        for arg, value in vars(args).items():
+            file.write(f'\t- {arg}: {value}\n')
+        if args.train == 'True':
+            file.write('Training summary: \n')
+            file.write(f'\t- Training loss: {train_loss}\n')
+            file.write(f'\t- Training accuracy: {train_accuracy}%\n')
+            file.write(f'\t- Test loss: {test_loss}\n')
+            file.write(f'\t- Test accuracy: {test_accuracy}%\n')
+        file.write('Prediction summary: \n')
+        file.write(f'\t- Minimum predicted MIC: {min_pred_mic}\n')
+        file.write(f'\t- Maximum predicted MIC: {max_pred_mic}\n')
+        file.write(f'\t- Mean predicted MIC: {mean_pred_mic}\n')
+
+    input_amp_proba = input('Run AMP probability prediciton ? [y/n]')
+    if input_amp_proba.lower() == 'y':
+        subprocess.run([
+            "ampep",
+            "train",
+            "-p", "../../../amPEPpy/training_data/M_model_train_AMP_sequence.numbered.fasta",
+            "-n", "../../../amPEPpy/training_data/M_model_train_nonAMP_sequence.numbered.proplen.subsample.fasta",
+            "--seed", "2012"
+        ])
+        subprocess.run([
+            "ampep",
+            "predict",
+            "-m", "amPEP.model",
+            "-i", f"{gen_dir}/sorted_peptides.fasta",
+            "-o", f"{gen_dir}/output.tsv",
+            "--seed", "2012"
+        ])
 
 if __name__ == "__main__":
     main()

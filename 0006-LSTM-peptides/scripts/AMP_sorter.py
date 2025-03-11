@@ -5,7 +5,8 @@ import numpy as np
 import pandas as pd
 import argparse
 import os
-import datetime
+from datetime import datetime
+import subprocess
 
 
 def parse_args():
@@ -227,8 +228,80 @@ def main():
 
     sum_path = os.path.join(gen_dir, "generation_summary.txt")
     with open(sum_path, 'a') as file:
-        file.write(f'\n Sorting summary: ')
+        file.write(f'\n Sorting summary: \n')
+        file.write(f'\t- Initial number of peptides: {initial_length} \n')
+        file.write(f'\t- Number of peptides after sorting: {output_length} \n')
 
+    sorting_input = input('Do you want to predict the MIC of the sorted peptides ? [y/n]: ')
+    if sorting_input.lower() == 'y':
+        print('MIC prediction command: \n')
+        print(f'python MIC_predictor.py --data_path ../../0003e-DRAMP-MIC-database/DRAMP_MIC_p_aeruginosa.csv --batch_size 32 --epochs 50 --embedding_dim 128 --hidden_dim 128 --num_layers 1 --dropout 0.5 --max_seq_len 15 --learning_rate 1e-3 --weight_decay 1e-5 --accuracy_percentage 10.0 --train_ratio 0.8 --vocab_size 21 --train True --save_model False --model_path ../models/bi_lstm_peptides_model.pt --peptide_path -d --prediction_path -d\n')
+        config_input = input('Keep configuration ? [y/n]: ')
 
+        if config_input.lower() == 'n':
+            data_path = input("Enter the path to the dataset: ")
+            batch_size = int(input("Enter batch size (int): "))
+            epochs = int(input("Enter number of epochs (int): "))
+            embedding_dim = int(input("Enter embedding dimension (int): "))
+            hidden_dim = int(input("Enter hidden dimension (int): "))
+            num_layers = int(input("Enter number of LSTM layers (int): "))
+            dropout = float(input("Enter dropout rate (float): "))
+            max_seq_len = int(input("Enter max sequence length (int): "))
+            learning_rate = float(input("Enter learning rate (float): "))
+            weight_decay = float(input("Enter weight decay (float): "))
+            accuracy_percentage = float(input("Enter accuracy percentage (float): "))
+            train_ratio = float(input("Enter train ratio (float): "))
+            vocab_size = int(input("Enter vocabulary size (int): "))
+            train = input("Train the model? (True/False): ").strip().lower() == "true"
+            save_model = input("Save the model? (True/False): ").strip().lower() == "true"
+            model_path = input("Enter the model path: ")
+            peptide_path = input("Enter the peptide path: ")
+            prediction_path = input("Enter the prediction path: ")
+
+        else:
+            data_path = '../../0003e-DRAMP-MIC-database/DRAMP_MIC_p_aeruginosa.csv'
+            batch_size =32
+            epochs = 50
+            embedding_dim = 128
+            hidden_dim = 128
+            num_layers = 1
+            dropout = 0.5
+            max_seq_len = 15
+            learning_rate = 1e-3
+            weight_decay = 1e-5
+            accuracy_percentage = 10.0
+            train_ratio = 0.8
+            vocab_size = 21
+            train = True
+            save_model = False
+            model_path = '../models/bi_lstm_peptides_model.pt'
+            peptide_path = '-d'
+            prediction_path = '-d'
+
+        subprocess.run([
+            "python",
+            "MIC_predictor.py",
+            "--data_path", data_path,
+            "--batch_size", str(batch_size),
+            "--epochs", str(epochs),
+            "--embedding_dim", str(embedding_dim),
+            "--hidden_dim", str(hidden_dim),
+            "--num_layers", str(num_layers),
+            "--dropout", str(dropout),
+            "--max_seq_len", str(max_seq_len),
+            "--learning_rate", str(learning_rate),
+            "--weight_decay", str(weight_decay),
+            "--accuracy_percentage", str(accuracy_percentage),
+            "--train_ratio", str(train_ratio),
+            "--vocab_size", str(vocab_size),
+            "--train", str(train),
+            "--save_model", str(save_model),
+            "--model_path", model_path,
+            "--peptide_path", peptide_path,
+            "--prediction_path", prediction_path
+        ])
+    else:
+        pass
 if __name__ == '__main__':
     main()
+

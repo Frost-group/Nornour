@@ -1,0 +1,32 @@
+Using configuration: {'epochs': 2, 'batch_size': 16, 'learning_rate': 0.00063, 'layers': 2, 'output_size': 21, 'hidden_size': 256, 'dropout': 0.7}
+longest peptide: 30 AA
+Size of peptides for model: 15
+Total peptides: 14220
+Training set size: 12087
+Test set size: 2133
+Max index: 20, Vocab size: 21
+
+-------Starting Training-------
+_________________________________
+Epoch [1/2]: 100%|███████████████████████████████████████████████████████| 755/755 [00:05<00:00, 142.91it/s, accuracy=tensor(0.3482), loss=2.16]
+Epoch [1/2], Loss: 2.2573933699273114, Accuracy: 0.3158940399657713
+Epoch [2/2]: 100%|███████████████████████████████████████████████████████| 755/755 [00:05<00:00, 135.59it/s, accuracy=tensor(0.4018), loss=1.86]
+Epoch [2/2], Loss: 2.012464186213664, Accuracy: 0.3891556292180194
+-------End of Training--------
+-----------------------------
+
+------Starting Testing------
+-----------------------------
+Test Error:
+ Accuracy: 39.96%, Avg loss: 2.0044
+
+------End of testing--------
+-----------------------------
+Model saved to ../models/lstm_peptides_model.pt
+Directory created: ../data/gen_11-03-2025/generated_peptides_1
+Generation command:
+Traceback (most recent call last):
+  File "/Users/gonterigor/Documents/Imperial/Research/Nornour/0006-LSTM-peptides/scripts/LSTM-peptide-model.py", line 500, in <module>
+    print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path lstm_peptides_model.pt --output_path {args.output_path} --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 40000 --min_length 1 --max_length 15 --seed -r \n""")
+                                                                                                                                       ^^^^^^^^^^^^^^^^
+AttributeError: 'Namespace' object has no attribute 'output_path'. Did you mean: 'output_size'?

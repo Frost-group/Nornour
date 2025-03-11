@@ -1,0 +1,15 @@
+{"time":"2025-03-11T17:08:57.767747Z","level":"INFO","msg":"stream: starting","core version":"0.19.8","symlink path":"/Users/gonterigor/Documents/Imperial/Research/Nornour/0006-LSTM-peptides/scripts/wandb/run-20250311_170857-13ujuj0m/logs/debug-core.log"}
+{"time":"2025-03-11T17:08:57.874622Z","level":"INFO","msg":"created new stream","id":"13ujuj0m"}
+{"time":"2025-03-11T17:08:57.874659Z","level":"INFO","msg":"stream: started","id":"13ujuj0m"}
+{"time":"2025-03-11T17:08:57.874662Z","level":"INFO","msg":"handler: started","stream_id":"13ujuj0m"}
+{"time":"2025-03-11T17:08:57.874695Z","level":"INFO","msg":"writer: Do: started","stream_id":"13ujuj0m"}
+{"time":"2025-03-11T17:08:57.874688Z","level":"INFO","msg":"sender: started","stream_id":"13ujuj0m"}
+{"time":"2025-03-11T17:08:58.258237Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-03-11T17:09:35.656944Z","level":"INFO","msg":"stream: closing","id":"13ujuj0m"}
+{"time":"2025-03-11T17:09:35.657008Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-03-11T17:09:35.658181Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-03-11T17:09:36.219441Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-03-11T17:09:36.394456Z","level":"INFO","msg":"handler: closed","stream_id":"13ujuj0m"}
+{"time":"2025-03-11T17:09:36.394462Z","level":"INFO","msg":"sender: closed","stream_id":"13ujuj0m"}
+{"time":"2025-03-11T17:09:36.394454Z","level":"INFO","msg":"writer: Close: closed","stream_id":"13ujuj0m"}
+{"time":"2025-03-11T17:09:36.394967Z","level":"INFO","msg":"stream: closed","id":"13ujuj0m"}

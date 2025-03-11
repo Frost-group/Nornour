@@ -8,7 +8,7 @@ import wandb
 import argparse
 from tqdm import tqdm
 import os
-import datetime
+from datetime import datetime
 import subprocess
 
 wandb.login()
@@ -21,16 +21,17 @@ def parse_args():
 
     parser.add_argument('--dataset_path', type=str, default='../../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides', help='Path to the dataset to use for training')
     parser.add_argument('--output_size', type=int, default=21, help='Size of the output layer (default: 22)')
-    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs for training (default: 100)')
-    parser.add_argument('--batch_size', type=int, default=256, help='Batch size for training and testing (default: 256)')
+    parser.add_argument('--epochs', type=int, default=50, help='Number of epochs for training (default: 100)')
+    parser.add_argument('--batch_size', type=int, default=16, help='Batch size for training and testing (default: 8)')
     parser.add_argument('--learning_rate', type=float, default=0.00063, help='Learning rate (default: 0.00063)')
-    parser.add_argument('--hidden_size', type=int, default=128, help='Hidden layer size (default: 128)')
-    parser.add_argument('--layers', type=int, default=3, help='Number of LSTM layers (default: 3)')
-    parser.add_argument('--dropout', type=float, default=0.5, help='Dropout rate (default: 0.5)')
+    parser.add_argument('--hidden_size', type=int, default=256, help='Hidden layer size (default: 256)')
+    parser.add_argument('--layers', type=int, default=2, help='Number of LSTM layers (default: 2)')
+    parser.add_argument('--dropout', type=float, default=0.7, help='Dropout rate (default: 0.7)')
     parser.add_argument('--max_length', type=int, default=15, help='Maximum peptide length (default: 15)')
-    parser.add_argument('--vocabulary', type=str, default= "RHKDESTNQCGPAILMFWYV_", help='List of amino acids and padding index')
+    parser.add_argument('--vocab', type=str, default= "RHKDESTNQCGPAILMFWYV_", help='List of amino acids and padding index')
     parser.add_argument('--save_model', type=bool, default=False, help='Save the trained model (default: False)')
 
+    args = parser.parse_args()
     return args
 
 
@@ -272,7 +273,7 @@ class LSTMPeptides(nn.Module):
         self.len_vocab = len(self.vocab)
 
         self.embedding_dim = 128
-        self.embedding = nn.Embedding(num_embeddings=self.len_vocab, embedding_dim=self.embedding_dim, padding_idx=21)
+        self.embedding = nn.Embedding(num_embeddings=self.len_vocab, embedding_dim=self.embedding_dim, padding_idx=20)
 
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_size, self.layers, batch_first=True)
         self.dropout_layer = nn.Dropout(p=self.dropout)
@@ -362,7 +363,7 @@ def train(peptides, model):
                 optimizer.step()
 
                 epoch_loss += loss.item()
-                epoch_accuracy += accuracy
+                epoch_accuracy += accuracy.item()
 
                 wandb.log({
                     "epoch": epoch + 1,
@@ -423,7 +424,7 @@ def test(test_data, model, batch_size):
             loss, accuracy = model.training_step(x, y, criterion, is_training=False)
 
             test_loss += loss.item()
-            correct += accuracy * y.numel()
+            correct += accuracy.item() * y.numel()
             total_samples += y.numel()
 
     num_batches = len(create_batches(inp_test_data, batch_size))
@@ -476,33 +477,59 @@ if __name__ == "__main__":
     with open(sum_path, 'w') as file:
         file.write(f'Generation number {gen_count}, created on {today}, workflow summary.\n\n')
         file.write('LSTM training summary: \n')
+
+        file.write('Dataset information: \n')
+        file.write('\t- Longest peptide: ' + str(long_pep) + ' AA\n')
+        file.write(f'\t- Total peptides: {len(peptides)}\n')
+        file.write(f'\t- Training set size: {len(train_data)}\n')
+        file.write(f'\t- Test set size: {len(test_data)}\n')
+
+        file.write('Hyperparameters: \n')
         for arg, value in vars(args).items():
             file.write(f'\t- {arg}: {value}\n')
+
         file.write('Accuracies and losses: \n')
         file.write(f'\t- training loss after last epoch: {avg_epoch_loss}\n')
         file.write(f'\t- training accuracy after last epoch: {avg_epoch_accuracy}\n')
         file.write(f'\t- test loss: {test_loss}\n')
         file.write(f'\t- test_accuracy: {test_accuracy}\n')
 
-    input = input('Do you want to run peptide generation ? [y/n]: ')
-    if input == 'y':
+    input_gen = input('Do you want to run peptide generation ? [y/n]: ')
+    if input_gen.lower() == 'y':
         print(f'Generation command: \n')
-        print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path lstm_peptides_model.pt --output_path {args.output_path} --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 40000 --min_length 1 --max_length 15 --seed -r """)
+        print(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path ../lstm_peptides_model.pt --output_path d --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature 1.0 --num_sequences 40000 --min_length 1 --max_length 15 --seed r \n""")
         config_input = input('Keep configuration ? [y/n]: ')
-        if config_input == 'n':
-            temperature_input = input('Temperature (float): ')
-            num_sequences_input = input('Number of sequences (int): ')
-            max_length_input = input('Max length (int): ')
-            min_length_input = input('Min length (int): ')
-            seed_input = input('Seed (str), -r for random: ')
+        if config_input.lower() == 'n':
+            temperature_input = float(input('Temperature (float): '))
+            num_sequences_input = int(input('Number of sequences (int): '))
+            max_length_input = int(input('Max length (int): '))
+            min_length_input = int(input('Min length (int): '))
+            seed_input = input('Seed (str), r for random: ')
         else:
             temperature_input = 1.0
             num_sequences_input = 40000
             max_length_input = 15
             min_length_input = 2
-            seed_input = '-r'
+            seed_input = 'r'
 
-        subprocess.run(f"""python LSTM-peptides-generation.py --dataset_path {args.dataset_path} --model_path {args.model_path} --output_path -d --output_size {args.output_size} --epochs {args.epochs} --batch_size {args.batch_size} --learning_rate {args.learning_rate} --hidden_size {args.hidden_size} --layers {args.layers} --dropout {args.dropout} --temperature {temperature_input} --num_sequences {num_sequences_input} --min_length {min_length_input} --max_length {max_length_input} --seed {seed_input} """)
+        subprocess.run([
+            "python",
+            "LSTM-peptides-generation.py",
+            "--dataset_path", args.dataset_path,
+            "--model_path", "../models/lstm_peptides_model.pt",
+            "--output_path", "d",
+            "--output_size", str(args.output_size),
+            "--epochs", str(args.epochs),
+            "--batch_size", str(args.batch_size),
+            "--learning_rate", str(args.learning_rate),
+            "--hidden_size", str(args.hidden_size),
+            "--layers", str(args.layers),
+            "--dropout", str(args.dropout),
+            "--temperature", str(temperature_input),
+            "--num_sequences", str(num_sequences_input),
+            "--min_length", str(min_length_input),
+            "--max_length", str(max_length_input),
+            "--seed", str(seed_input)])
     else:
         pass
 

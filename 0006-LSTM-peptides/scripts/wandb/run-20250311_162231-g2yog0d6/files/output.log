@@ -1,0 +1,16 @@
+Using configuration: {'epochs': 100, 'batch_size': 256, 'learning_rate': 0.00063, 'layers': 3, 'output_size': 21, 'hidden_size': 128, 'dropout': 0.5}
+longest peptide: 30 AA
+Size of peptides for model: 15
+Total peptides: 14220
+Training set size: 12087
+Test set size: 2133
+Traceback (most recent call last):
+  File "/Users/gonterigor/Documents/Imperial/Research/Nornour/0006-LSTM-peptides/scripts/LSTM-peptide-model.py", line 458, in <module>
+    model = LSTMPeptides(long_pep)
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/gonterigor/Documents/Imperial/Research/Nornour/0006-LSTM-peptides/scripts/LSTM-peptide-model.py", line 276, in __init__
+    self.embedding = nn.Embedding(num_embeddings=self.len_vocab, embedding_dim=self.embedding_dim, padding_idx=21)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.12/site-packages/torch/nn/modules/sparse.py", line 154, in __init__
+    padding_idx < self.num_embeddings
+AssertionError: Padding_idx must be within num_embeddings

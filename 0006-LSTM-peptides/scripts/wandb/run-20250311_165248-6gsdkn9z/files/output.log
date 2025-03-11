@@ -1,0 +1,30 @@
+Using configuration: {'epochs': 2, 'batch_size': 16, 'learning_rate': 0.00063, 'layers': 2, 'output_size': 21, 'hidden_size': 256, 'dropout': 0.7}
+longest peptide: 30 AA
+Size of peptides for model: 15
+Total peptides: 14220
+Training set size: 12087
+Test set size: 2133
+Max index: 20, Vocab size: 21
+
+-------Starting Training-------
+_________________________________
+Epoch [1/2]: 100%|███████████████████████████████████████████████████████| 755/755 [00:05<00:00, 147.78it/s, accuracy=tensor(0.4196), loss=1.91]
+Epoch [1/2], Loss: 2.240751271374178, Accuracy: 0.3223096027205519
+Epoch [2/2]: 100%|███████████████████████████████████████████████████████| 755/755 [00:05<00:00, 147.90it/s, accuracy=tensor(0.4196), loss=1.89]
+Epoch [2/2], Loss: 2.004422460328664, Accuracy: 0.3935489595725836
+-------End of Training--------
+-----------------------------
+
+------Starting Testing------
+-----------------------------
+Test Error:
+ Accuracy: 39.76%, Avg loss: 2.0008
+
+------End of testing--------
+-----------------------------
+Model saved to ../models/lstm_peptides_model.pt
+Traceback (most recent call last):
+  File "/Users/gonterigor/Documents/Imperial/Research/Nornour/0006-LSTM-peptides/scripts/LSTM-peptide-model.py", line 469, in <module>
+    today = datetime.today().strftime("%d-%m-%Y")
+            ^^^^^^^^^^^^^^
+AttributeError: module 'datetime' has no attribute 'today'
