@@ -16,7 +16,7 @@ print(device)
 
 class LSTMArgs:
     def __init__(self):
-        self.dataset_path = '../0003b-RW-Lexicon/RW_lexicon.dat'
+        self.dataset_path = '../../0003b-RW-Lexicon/RW_lexicon.dat'
         self.output_size = 22
         self.epochs = 50
         self.batch_size = 8
@@ -492,7 +492,7 @@ if __name__ == "__main__":
     test(test_data, model, wandb.config.batch_size)
 
     if args.save_model:
-        model_path = "lstm_peptides_model.pt"
+        model_path = "../models/lstm_peptides_model.pt"
         torch.save(model.state_dict(), model_path)
         print(f"Model saved to {model_path}")
 
@@ -502,7 +502,7 @@ if __name__ == "__main__":
 """
 Command to run code:
 
-python LSTM-peptide-model.py  --dataset_path ../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides --output_size 22 --epochs 15 --batch_size 8 --learning_rate 0.000063 --hidden_size 256 --layers 2 --dropout 0.7 --max_length 15 --vocabulary "RHKDESTNQCUGPAILMFWYV_"  --save_model True
+python LSTM-peptide-model.py  --dataset_path ../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides --output_size 22 --epochs 15 --batch_size 256 --learning_rate 0.000063 --hidden_size 256 --layers 2 --dropout 0.7 --max_length 15 --vocabulary "RHKDESTNQCUGPAILMFWYV_"  --save_model True
 """
 
 """

@@ -2,11 +2,12 @@ import requests
 import argparse
 import pandas as pd
 from bs4 import BeautifulSoup
+import subprocess
 
 class SorterArgs:
     def __init__(self):
-        self.sorting_path = '../0006b-LSTM-data/sorted_peptides.fasta'
-        self.output_path = '../0006b-LSTM-data/predictions.csv'
+        self.sorting_path = '../data/sorted_peptides.fasta'
+        self.output_path = '../data/predictions.csv'
 
 
 def parse_args():
@@ -72,6 +73,7 @@ def amp_proba_predictor(filepath):
 
     pred_AMP_proba = [v for v in values if v is not None]
     return pred_AMP_proba
+
 
 
 def main():

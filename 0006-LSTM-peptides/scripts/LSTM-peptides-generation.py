@@ -11,8 +11,8 @@ print(f"Using device: {device}")
 
 class LSTMArgsGen:
     def __init__(self):
-        self.dataset_path = '../0003b-RW-Lexicon/RW_lexicon.dat'
-        self.output_path = '../0006b-LSTM-data/generation_peptides.fasta'
+        self.dataset_path = '../../0003b-RW-Lexicon/RW_lexicon.dat'
+        self.output_path = '../data/generation_peptides.fasta'
         self.output_size = 22
         self.epochs = 50
         self.batch_size = 8

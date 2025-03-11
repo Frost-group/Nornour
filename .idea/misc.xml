@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="LLM2" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="LLM2" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="$USER_HOME$/miniconda3/envs/GCE" project-jdk-type="Python SDK" />
 </project>

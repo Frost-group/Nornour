@@ -1,4 +1,6 @@
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
+from Bio.SeqUtils.IsoelectricPoint import IsoelectricPoint as IP
+from modlamp.descriptors import GlobalDescriptor
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -7,9 +9,9 @@ import argparse
 
 class SorterArgs:
     def __init__(self):
-        self.input_path = '../0006b-LSTM-data/generation_peptides.fasta'
-        self.sorting_path = '../0006b-LSTM-data/sorted_peptides.fasta'
-        self.output_path = '../0006b-LSTM-data/potential_amp.fasta'
+        self.input_path = '../data/generation_peptides.fasta'
+        self.sorting_path = '../data/sorted_peptides.fasta'
+        self.output_path = '../data/potential_amp.fasta'
 
 
 
@@ -116,10 +118,12 @@ def amphiphilicity_calculator(peptide, plot=False):
     return H_star
 
 
-def hydrophobicity_calculator(peptide):
-    X = ProteinAnalysis(peptide)
-    hydrophobicity = X.gravy(scale='KyteDoolitle')
-    return hydrophobicity
+def hydrophobic_percentage(peptide):
+    hydrophobic_residues = {'A', 'V', 'I', 'L', 'M', 'F', 'W', 'Y', 'P'}
+    total_length = len(peptide)
+    hydrophobic_count = sum(1 for aa in peptide if aa in hydrophobic_residues)
+    percentage = (hydrophobic_count / total_length)
+    return round(percentage, 4)
 
 
 def charge_calculator(peptide):
@@ -127,17 +131,33 @@ def charge_calculator(peptide):
     charge = X.charge_at_pH(7.4)
     return charge
 
+def boman_index(peptide):
+    desc = GlobalDescriptor(peptide)
+    desc.boman_index()
+    return desc.descriptor
+
+def isoelectric_point(peptide):
+    X = IP(peptide)
+    ip = X.pi()
+    return ip
+
 
 def amp_sorter(fasta_file_input, fasta_file_output):
     peptide_df = fasta_to_df(fasta_file_input)
-    peptide_df['Hydrophobic index'] = peptide_df['Sequence'].apply(lambda x: hydrophobicity_calculator(x))
+    peptide_df['Hydrophobic residues percentage'] = peptide_df['Sequence'].apply(lambda x: hydrophobic_percentage(x))
     peptide_df['Charge (pH 7.4)'] = peptide_df['Sequence'].apply(lambda x: charge_calculator(x))
     peptide_df['Amphiphilicity'] = peptide_df['Sequence'].apply(lambda x: amphiphilicity_calculator(x, False))
+    peptide_df['Boman index'] = peptide_df['Sequence'].apply(lambda x: boman_index(x))
+    peptide_df['Isoelectric point'] = peptide_df['Sequence'].apply(lambda x: isoelectric_point(x))
 
-    peptide_df = peptide_df.query("`Hydrophobic index` > 0.5")
+    peptide_df = peptide_df.query("`Hydrophobicity percentage` > 0.35")
+    peptide_df = peptide_df.query("`Hydrophobicity percentage` < 0.7")
     peptide_df = peptide_df.query("`Charge (pH 7.4)` > 2")
-    peptide_df = peptide_df.query("`Charge (pH 7.4)` < 5")
+    peptide_df = peptide_df.query("`Charge (pH 7.4)` < 6")
     peptide_df = peptide_df.query("`Amphiphilicity` > 0.33")
+    peptide_df = peptide_df.query('`Boman index`> 0 ')
+    peptide_df = peptide_df.query('`Boman index` < 8 ')
+    peptide_df = peptide_df.query('`Isoelectric point` > 10 ')
 
     df_to_fasta(fasta_file_output, peptide_df)
 

@@ -16,7 +16,7 @@ print(device)
 
 class MICArgs:
     def __init__(self):
-        self.data_path = '../0003e-DRAMP-MIC-database/DRAMP_MIC_p_aeruginosa.csv'
+        self.data_path = '../../0003e-DRAMP-MIC-database/DRAMP_MIC_p_aeruginosa.csv'
         self.batch_size = 8
         self.epochs = 50
         self.embedding_dim = 100
@@ -31,9 +31,9 @@ class MICArgs:
         self.vocab_size = 21
         self.train = False
         self.save_model = False
-        self.model_path = 'bi_lstm_peptides_model.pt'
-        self.peptide_path = '../0006b-LSTM-data/sorted_peptides.fasta'
-        self.prediction_path = '../0006b-LSTM-data/predictions.csv'
+        self.model_path = '../models/bi_lstm_peptides_model.pt'
+        self.peptide_path = '../data/sorted_peptides.fasta'
+        self.prediction_path = '../data/predictions.csv'
 
 
 def get_args():
