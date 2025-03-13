@@ -6,6 +6,7 @@ import random
 import os
 from datetime import datetime
 import subprocess
+from tqdm import tqdm
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -225,7 +226,7 @@ def temperature_sampling(logits, temperature):
     Returns:
         - next_index (int): The index of the token selected by the sampling process."""
 
-    padding_index = 21
+    padding_index = 20
     logits[:, padding_index] = float('-inf')
     scaled_logits = logits / temperature
     probabilities = F.softmax(scaled_logits, dim=-1)
@@ -363,24 +364,27 @@ def main():
 
     iteration = 0
     gen_sequences = set()
-    while len(gen_sequences) < args.num_sequences:
-        number_aa = random.randint(args.min_length, args.max_length)
-        gen_pep = gen_peptides(model, args.seed, number_aa, vocab, device, args.temperature)
-        gen_sequences.add(gen_pep)
-        iteration += 1
-        if iteration > (2 * args.num_sequences):
-            break
+    with tqdm(total=args.num_sequences, desc="Generating Peptides") as pbar:
+        while len(gen_sequences) < args.num_sequences:
+            number_aa = random.randint(args.min_length, args.max_length)
+            gen_pep = gen_peptides(model, args.seed, number_aa, vocab, device, args.temperature)
+            if gen_pep not in gen_sequences:
+                gen_sequences.add(gen_pep)
+                pbar.update(1)
+            iteration += 1
+            if iteration > (2 * args.num_sequences):
+                break
 
     peptides_to_remove = set()
 
     print(f"--------------------------\n Generated {len(gen_sequences)} unique peptide sequences:")
     for pep in gen_sequences:
-        print(pep)
-        print('\n')
         if 'U' in peptides:
+            print(pep)
             print('Peptide contains non canonical amino acids \n Peptide marked for removal from generated sequences \n--------------------------\n')
             peptides_to_remove.add(pep)
         elif pep in peptides:
+            print(pep)
             print('Peptide already in dataset \n Peptide marked for removal from generated sequences \n--------------------------\n')
             peptides_to_remove.add(pep)
 
@@ -394,11 +398,15 @@ def main():
     print(f'Shortest peptide: {short_len} amino acids')
     print(f'Longest peptide: {long_len} amino acids\n')
 
-
     today = datetime.today().strftime("%d-%m-%Y")
     base_dir = "../data"
-    gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
-    gen_dir = os.path.join(base_dir, f"gen_{today}", f"generated_peptides_{gen_count}")
+    gen_base_dir = os.path.join(base_dir, f"gen_{today}")
+    os.makedirs(gen_base_dir, exist_ok=True)
+    count = 0
+    while os.path.exists(os.path.join(gen_base_dir, f"generated_peptides_{count + 1}")):
+        count += 1
+    gen_dir = os.path.join(gen_base_dir, f"generated_peptides_{count}")
+
     if args.output_path == 'd':
         gen_path = os.path.join(gen_dir, "gen_peptides.fasta")
 
@@ -410,7 +418,7 @@ def main():
 
     sum_path = os.path.join(gen_dir, "generation_summary.txt")
     with open(sum_path, 'a') as file:
-        file.write(f'\n Generation summary: \n')
+        file.write(f'\nGeneration summary: \n')
         file.write('Configuration:\n')
 
         for arg, value in vars(args).items():
@@ -421,15 +429,15 @@ def main():
         file.write(f'\t- Shortest peptide: {short_len} amino acids\n')
         file.write(f'\t- Longest peptide: {long_len} amino acids\n')
 
-    input = input('Do you want to sort the peptides ? [y/n]: ')
-    if input == 'y':
+    sort_input = input('Do you want to sort the peptides ? [y/n]: ')
+    if sort_input == 'y':
         print(f'Sorting command: \n')
-        print(f"""python AMP_sorter.py --input_path {gen_path} --output_path d""")
+        print(f"""python AMP_sorter.py --input_path {gen_path} --sorting_path d""")
         subprocess.run([
             "python",
             "AMP_sorter.py",
             "--input_path", gen_path,
-            "--output_path", "d"
+            "--sorting_path", "d"
         ])
     else:
         pass

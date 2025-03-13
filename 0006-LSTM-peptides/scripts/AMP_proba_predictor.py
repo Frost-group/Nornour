@@ -5,8 +5,8 @@ from bs4 import BeautifulSoup
 
 class SorterArgs:
     def __init__(self):
-        self.sorting_path = '../data/sorted_peptides.fasta'
-        self.output_path = '../data/predictions.csv'
+        self.sorting_path = '../data/old_generation/sorted_peptides.fasta'
+        self.output_path = '../data/old_generation/predictions.csv'
 
 
 def parse_args():

@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument('--save_model', type=bool, default=False, help='Save the trained model (default: False)')
 
     args = parser.parse_args()
+
     return args
 
 
@@ -431,7 +432,7 @@ def test(test_data, model, batch_size):
     test_loss /= num_batches
     test_accuracy = correct / total_samples
 
-    print(f'Test Error: \n Accuracy: {100 * test_accuracy:.2f}%, Avg loss: {test_loss:.4f} \n')
+    print(f'Test logs: \n Accuracy: {100 * test_accuracy:.2f}%, Avg loss: {test_loss:.4f} \n')
     print('------End of testing--------\n-----------------------------')
 
     return round(test_loss, 6), round(test_accuracy, 4)
@@ -468,14 +469,19 @@ if __name__ == "__main__":
 
     today = datetime.today().strftime("%d-%m-%Y")
     base_dir = "../data"
-    gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
-    gen_dir = os.path.join(base_dir, f"gen_{today}", f"generated_peptides_{gen_count}")
-    os.makedirs(gen_dir, exist_ok=True)
+    gen_base_dir = os.path.join(base_dir, f"gen_{today}")
+    os.makedirs(gen_base_dir, exist_ok=True)
+    count = 1
+    while os.path.exists(os.path.join(gen_base_dir, f"generated_peptides_{count}")):
+        count += 1
+    gen_dir = os.path.join(gen_base_dir, f"generated_peptides_{count}")
+    os.makedirs(gen_dir)
+
     print(f"Directory created: {gen_dir}")
 
     sum_path = os.path.join(gen_dir, "generation_summary.txt")
     with open(sum_path, 'w') as file:
-        file.write(f'Generation number {gen_count}, created on {today}, workflow summary.\n\n')
+        file.write(f'Generation number {count}, created on {today}, workflow summary.\n\n')
         file.write('LSTM training summary: \n')
 
         file.write('Dataset information: \n')

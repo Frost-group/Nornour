@@ -1,0 +1,16 @@
+{"time":"2025-03-13T11:33:07.523261Z","level":"INFO","msg":"stream: starting","core version":"0.19.8","symlink path":"/Users/gonterigor/Documents/Imperial/Research/Nornour/0006-LSTM-peptides/scripts/wandb/run-20250313_113307-swrhrxp5/logs/debug-core.log"}
+{"time":"2025-03-13T11:33:07.629901Z","level":"INFO","msg":"created new stream","id":"swrhrxp5"}
+{"time":"2025-03-13T11:33:07.629943Z","level":"INFO","msg":"stream: started","id":"swrhrxp5"}
+{"time":"2025-03-13T11:33:07.629959Z","level":"INFO","msg":"sender: started","stream_id":"swrhrxp5"}
+{"time":"2025-03-13T11:33:07.629974Z","level":"INFO","msg":"writer: Do: started","stream_id":"swrhrxp5"}
+{"time":"2025-03-13T11:33:07.629951Z","level":"INFO","msg":"handler: started","stream_id":"swrhrxp5"}
+{"time":"2025-03-13T11:33:07.884448Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-03-13T11:45:23.565976Z","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/igor-gonteri-icl/LSTM-peptides_DBAASP/swrhrxp5/file_stream\": read tcp [2a0c:5bc0:40:2e26:dd5c:96bb:3e3a:d3ee]:61874->[2a0c:5bc0:40:2fff::23ba:e431]:443: read: connection reset by peer"}
+{"time":"2025-03-13T11:48:54.405784Z","level":"INFO","msg":"stream: closing","id":"swrhrxp5"}
+{"time":"2025-03-13T11:48:54.405869Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-03-13T11:48:54.406791Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-03-13T11:48:54.954978Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-03-13T11:48:55.107356Z","level":"INFO","msg":"handler: closed","stream_id":"swrhrxp5"}
+{"time":"2025-03-13T11:48:55.107372Z","level":"INFO","msg":"sender: closed","stream_id":"swrhrxp5"}
+{"time":"2025-03-13T11:48:55.107363Z","level":"INFO","msg":"writer: Close: closed","stream_id":"swrhrxp5"}
+{"time":"2025-03-13T11:48:55.107787Z","level":"INFO","msg":"stream: closed","id":"swrhrxp5"}

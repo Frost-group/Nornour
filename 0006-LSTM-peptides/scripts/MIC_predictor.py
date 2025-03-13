@@ -34,7 +34,7 @@ def get_args():
     parser.add_argument('--accuracy_percentage', type=float, default=10.0, help="Percentage range for accuracy calculation.")
     parser.add_argument('--train_ratio', type=float, default=0.8, help="Proportion of data used for training.")
     parser.add_argument('--vocab_size', type=int, default=21, help='Vocabulary size (number of amino acids')
-    parser.add_argument('--train', type=bool, default=True, help='Whether to train the model before prediction')
+    parser.add_argument('--train', type=bool, default=True, action=argparse.BooleanOptionalAction, help='Whether to train the model before prediction')
     parser.add_argument('--save_model', type=bool, default=False, help="Whether to save the model after training")
     parser.add_argument('--model_path', type=str, default='../models/bi_lstm_peptides_model.pt', help='Path to file where to save the model')
     parser.add_argument('--peptide_path', type=str, default='d', help='Path where the peptides used for prediction are taken from')
@@ -508,13 +508,13 @@ def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, mins_ctd,
     lower_bound = pred_mic - tolerance_range
     upper_bound = pred_mic + tolerance_range
 
-    return round(pred_mic.item(), 6), round(lower_bound.item(), 6), round(upper_bound.item(), 6), round(tolerance_range.item(), 6)
+    return round(pred_mic.item(), 3), round(lower_bound.item(), 3), round(upper_bound.item(), 3), round(tolerance_range.item(), 3)
 
 
 def main():
     args = get_args()
     data = []
-    if args.data_path == '-d':
+    if args.data_path == 'd':
         today = datetime.today().strftime("%d-%m-%Y")
         base_dir = f"../data/gen_{today}"
         gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
@@ -536,7 +536,7 @@ def main():
     df['log10_Standardised_MIC'] = df['Standardised_MIC[µM]'].apply(lambda x: math.log10(x))
     min_val = df['log10_Standardised_MIC'].min()
     max_val = df['log10_Standardised_MIC'].max()
-    df['scaled_log10_MIC'] = (df['log10_Standardised_MIC'] - min_val) / (max_val - min_val)
+    df['scaled_log10_MIC'] = (df['log10_Standardised_MIC'] - min_val) / (max_val - min_val + 1e-8)
 
     #calculation of descriptors for input peptides
     df, dims, mins_ctd, maxs_ctd, mins_qso, maxs_qso = desc_to_df(df)
@@ -553,7 +553,7 @@ def main():
             num_layers=args.num_layers,
             dropout= args.dropout
         )
-    if args.train == True:
+    if args.train:
         dataset = PeptideDataset(df, max_seq_len=args.max_seq_len)
         dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
@@ -581,11 +581,15 @@ def main():
         model.load_state_dict(torch.load(args.model_path, weights_only=True))
 
     today = datetime.today().strftime("%d-%m-%Y")
-    base_dir = f"../data/gen_{today}"
-    gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
-    gen_dir = os.path.join(base_dir, f"gen_{today}", f"generated_peptides_{gen_count}")
+    base_dir = "../data"
+    gen_base_dir = os.path.join(base_dir, f"gen_{today}")
+    os.makedirs(gen_base_dir, exist_ok=True)
+    count = 0
+    while os.path.exists(os.path.join(gen_base_dir, f"generated_peptides_{count + 1}")):
+        count += 1
+    gen_dir = os.path.join(gen_base_dir, f"generated_peptides_{count}")
 
-    if args.prediction_path == '-d':
+    if args.prediction_path == 'd':
         prediction_path = os.path.join(gen_dir, 'MIC_predictions.csv')
     else:
         prediction_path = args.prediction_path
@@ -601,12 +605,12 @@ def main():
 
     sum_path = os.path.join(gen_dir, 'generation_summary.txt')
 
-    with open(sum_path, 'w') as file:
+    with open(sum_path, 'a') as file:
         file.write('\nMIC prediction summary: \n')
-        file.write('Hyperparameters: ')
+        file.write('Hyperparameters: \n')
         for arg, value in vars(args).items():
             file.write(f'\t- {arg}: {value}\n')
-        if args.train == 'True':
+        if args.train:
             file.write('Training summary: \n')
             file.write(f'\t- Training loss: {train_loss}\n')
             file.write(f'\t- Training accuracy: {train_accuracy}%\n')
@@ -617,7 +621,7 @@ def main():
         file.write(f'\t- Maximum predicted MIC: {max_pred_mic}\n')
         file.write(f'\t- Mean predicted MIC: {mean_pred_mic}\n')
 
-    input_amp_proba = input('Run AMP probability prediciton ? [y/n]')
+    input_amp_proba = input('Run AMP probability prediciton ? [y/n]: ')
     if input_amp_proba.lower() == 'y':
         subprocess.run([
             "ampep",
@@ -631,7 +635,7 @@ def main():
             "predict",
             "-m", "amPEP.model",
             "-i", f"{gen_dir}/sorted_peptides.fasta",
-            "-o", f"{gen_dir}/output.tsv",
+            "-o", f"{gen_dir}/AMP_proba.tsv",
             "--seed", "2012"
         ])
 
