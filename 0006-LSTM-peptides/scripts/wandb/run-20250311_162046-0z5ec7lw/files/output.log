@@ -1,6 +1,0 @@
-Using configuration: {'epochs': 100, 'batch_size': 256, 'learning_rate': 0.00063, 'layers': 3, 'output_size': 21, 'hidden_size': 128, 'dropout': 0.5}
-Traceback (most recent call last):
-  File "/Users/gonterigor/Documents/Imperial/Research/Nornour/0006-LSTM-peptides/scripts/LSTM-peptide-model.py", line 441, in <module>
-    vocab = args.vocab
-            ^^^^^^^^^^
-AttributeError: 'Namespace' object has no attribute 'vocab'

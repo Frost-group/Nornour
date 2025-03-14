@@ -198,7 +198,6 @@ def process_dataframe(df, model, max_seq_len, min_mic, max_mic, mins_ctd, mins_q
     results = df['Sequence'].apply(lambda seq: activity_predictor(seq, model, max_seq_len, min_mic, max_mic,
                                                                   mins_ctd, mins_qso, maxs_ctd, maxs_qso,
                                                                   accuracy_percentage))
-    # Unpack results and assign to new columns
     df[['pred_mic', 'lower_bound', 'upper_bound', 'tolerance_range']] = pd.DataFrame(results.tolist(), index=df.index)
     return df
 
