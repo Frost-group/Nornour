@@ -1,0 +1,21 @@
+#First round of synthesis - peptides picked from the top 20 LSTM predicted peps sorted by AMP probability
+
+>peptide_1
+IVFLKLPAGKKKIL
+Ile Val Phe Leu Lys Leu Pro Ala Gly Lys Lys Lys Ile Leu
+14 amino acids; Mw=1568.17
+
+>peptide_8
+IVLPKLKCLLIK
+Ile Val Leu Pro Lys Leu Lys Cys Leu Leu Ile Lys
+12 amino acids; Mw=1380.98
+
+>peptide_10
+IKFLSLKLGLSLKK
+Ile Lys Phe Leu Ser Leu Lys Leu Gly Leu Ser Leu Lys Lys
+14 amino acids; Mw=1588.16
+
+>peptide_11
+LILKPLKLLKCLKKL
+Leu Ile Leu Lys Pro Leu Lys Leu Leu Lys Cys Leu Lys Lys Leu
+15 amino acids; Mw=1764.54
