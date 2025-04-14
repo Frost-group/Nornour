@@ -1,0 +1,66 @@
+#Second Round of pep synth - first 6 taken from top 20 peps sorted by AMP probability (all > 0.995), second six chosen from list sorted by lowest MIC values - named by ID tag with associated AMP probability listed.
+
+
+>peptide_8
+IVLPKLKCLLIK
+Ile Val Leu Pro Lys Leu Lys Cys Leu Leu Ile Lys
+12 amino acids; Mw=1380.98
+
+>peptide_10
+IKFLSLKLGLSLKK
+Ile Lys Phe Leu Ser Leu Lys Leu Gly Leu Ser Leu Lys Lys
+14 amino acids; Mw=1588.16
+
+>peptide_11
+LILKPLKLLKCLKKL
+Leu Ile Leu Lys Pro Leu Lys Leu Leu Lys Cys Leu Lys Lys Leu
+15 amino acids; Mw=1764.54
+
+>peptide_13
+ILFIGSLIKKRPIK
+Ile Leu Phe Ile Gly Ser Leu Ile Lys Lys Arg Pro Ile Lys
+14 amino acids; Mw=1626.22
+
+>peptide_16
+LWFIVKKLASKVLP
+Leu Trp Phe Ile Val Lys Lys Leu Ala Ser Lys Val Leu Pro
+14 amino acids; Mw=1642.19
+
+>peptide_17
+FRFPRIGIIILAVKK
+Phe Arg Phe Pro Arg Ile Gly Ile Ile Ile Leu Ala Val Lys Lys
+15 amino acids; Mw=1771.39
+
+
+
+
+>peptide_97
+VFFWLLCKLKKKLL
+Val Phe Phe Trp Leu Leu Cys Lys Leu Lys Lys Lys Leu Leu
+0.9395, 14 amino acids; Mw= 1779.44Da
+
+>peptide_1181
+VLKCLCLKLKKKLL
+Val Leu Lys Cys Leu Cys Leu Lys Leu Lys Lys Lys Leu Leu
+0.987, 14 amino acids; Mw= 1643.36
+
+>peptide_1304
+WLLLLCLKKCLKKKL
+Trp Leu Leu Leu Leu Cys Leu Lys Lys Cys Leu Lys Lys Lys Leu
+0.982, 15 amino acids; Mw= 1843.6
+
+>peptide_803
+WLILPKLKCLLKKL
+Trp Leu Ile Leu Pro Lys Leu Lys Cys Leu Leu Lys Lys Leu
+0.9935, 14 amino acids; Mw= 1709.4
+
+>peptide_1197
+KVLLLLCKLKKK
+Lys Val Leu Leu Leu Leu Cys Lys Leu Lys Lys Lys
+0.9385, 12 amino acids; Mw= 1427.05
+
+>peptide_946
+LVRIKIRPIIRPIIR
+Leu Val Arg Ile Lys Ile Arg Pro Ile Ile Arg Pro Ile Ile Arg
+0.9175, 15 amino acids; Mw= 1856.57
+
