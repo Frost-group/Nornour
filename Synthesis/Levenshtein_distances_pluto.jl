@@ -115,12 +115,15 @@ for pep in peptides
 	println("Peptide : $(pep[1]) \tSeq: $(pep[2])")
 
 	ls=[levenshtein(pep[2],p) for p in db]
-	scores=sortslices(hcat(ls,db), dims=1)
+	scores=unique(sortslices(hcat(ls,db), dims=1),dims=1)
 
 	for i in 1:10
 		println("    Match distance: $(scores[i,:][1])  \tSeq: $(scores[i,:][2])")
 	end
 end
+
+# ╔═╡ 7751afa6-170a-4979-b3b4-d62ed8adfe55
+
 
 # ╔═╡ fd8b68c3-38f8-4d1b-8ad1-36c6b5bdb287
 for pep in peptides
@@ -128,7 +131,7 @@ for pep in peptides
 
 # putting a cost of 2x for addition and deletion of codons vs. substitution:
 	ls=[levenshtein(pep[2],p, 2,2,1) for p in db]
-	scores=sortslices(hcat(ls,db), dims=1)
+	scores=unique(sortslices(hcat(ls,db), dims=1),dims=1)
 
 	for i in 1:10
 		println("    Match distance: $(scores[i,:][1])  \tSeq: $(scores[i,:][2])")
@@ -167,6 +170,7 @@ project_hash = "da39a3ee5e6b4b0d3255bfef95601890afd80709"
 # ╠═b2dbaf84-2ef4-4811-8df1-47d5c744e96a
 # ╠═13d461c9-daad-4c54-a629-86ab59c97ffe
 # ╠═cfd1b43a-2cba-4740-9a4f-267834faefa6
+# ╠═7751afa6-170a-4979-b3b4-d62ed8adfe55
 # ╠═fd8b68c3-38f8-4d1b-8ad1-36c6b5bdb287
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
