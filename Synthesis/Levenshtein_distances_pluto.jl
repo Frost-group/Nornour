@@ -90,7 +90,7 @@ db=readlines("/Users/jmf02/REPOS/Nornour/0003d-DBAASP-Database/Database_of_Antim
 target="LILKPLKLLKCLKKL"
 
 # ╔═╡ 5984685f-b993-4dd2-830e-9be2beb4b8ed
-ls=[levenshtein(target,pep) for pep in db]
+ls=[levenshtein(target,pep, 5,5,1) for pep in db]
 
 # ╔═╡ e1f6b696-74ee-4247-aeea-d43313511fe2
 m,idx=findmin(ls)
@@ -112,13 +112,26 @@ peptides=parse_peptides("../Synthesis/SecondRound.txt")
 
 # ╔═╡ cfd1b43a-2cba-4740-9a4f-267834faefa6
 for pep in peptides
-	println("Peptide : $(pep[1]) Seq: $(pep[2])")
+	println("Peptide : $(pep[1]) \tSeq: $(pep[2])")
 
 	ls=[levenshtein(pep[2],p) for p in db]
 	scores=sortslices(hcat(ls,db), dims=1)
 
 	for i in 1:10
-		println("    Match distance: $(scores[i,:][1])  Seq: $(scores[i,:][2])")
+		println("    Match distance: $(scores[i,:][1])  \tSeq: $(scores[i,:][2])")
+	end
+end
+
+# ╔═╡ fd8b68c3-38f8-4d1b-8ad1-36c6b5bdb287
+for pep in peptides
+	println("Peptide : $(pep[1]) \tSeq: $(pep[2])")
+
+# putting a cost of 2x for addition and deletion of codons vs. substitution:
+	ls=[levenshtein(pep[2],p, 2,2,1) for p in db]
+	scores=sortslices(hcat(ls,db), dims=1)
+
+	for i in 1:10
+		println("    Match distance: $(scores[i,:][1])  \tSeq: $(scores[i,:][2])")
 	end
 end
 
@@ -154,5 +167,6 @@ project_hash = "da39a3ee5e6b4b0d3255bfef95601890afd80709"
 # ╠═b2dbaf84-2ef4-4811-8df1-47d5c744e96a
 # ╠═13d461c9-daad-4c54-a629-86ab59c97ffe
 # ╠═cfd1b43a-2cba-4740-9a4f-267834faefa6
+# ╠═fd8b68c3-38f8-4d1b-8ad1-36c6b5bdb287
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
