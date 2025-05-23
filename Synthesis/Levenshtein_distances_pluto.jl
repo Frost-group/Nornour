@@ -86,7 +86,8 @@ db=readlines("/Users/jmf02/REPOS/Nornour/0003d-DBAASP-Database/Database_of_Antim
 
 # ╔═╡ dd1e1ca1-d018-4d6f-bef6-b826cf8c9289
 #peptide_10 IKFLSLKLGLSLKK
-target="IKFLSLKLGLSLKK"
+#peptide_11 LILKPLKLLKCLKKL
+target="LILKPLKLLKCLKKL"
 
 # ╔═╡ 5984685f-b993-4dd2-830e-9be2beb4b8ed
 ls=[levenshtein(target,pep) for pep in db]
@@ -101,7 +102,25 @@ db[idx]
 sortslices(hcat(ls,db), dims=1)
 
 # ╔═╡ 0fc59863-f695-45fd-8347-c69863e06cfe
+### Hold my beer
 
+# ╔═╡ b2dbaf84-2ef4-4811-8df1-47d5c744e96a
+parse_peptides(file) = [(m[1], m[2]) for m in eachmatch(r">(\w+)\n([A-Z]+)", read(file, String))]
+
+# ╔═╡ 13d461c9-daad-4c54-a629-86ab59c97ffe
+peptides=parse_peptides("../Synthesis/SecondRound.txt")
+
+# ╔═╡ cfd1b43a-2cba-4740-9a4f-267834faefa6
+for pep in peptides
+	println("Peptide : $(pep[1]) Seq: $(pep[2])")
+
+	ls=[levenshtein(pep[2],p) for p in db]
+	scores=sortslices(hcat(ls,db), dims=1)
+
+	for i in 1:10
+		println("    Match distance: $(scores[i,:][1])  Seq: $(scores[i,:][2])")
+	end
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -132,5 +151,8 @@ project_hash = "da39a3ee5e6b4b0d3255bfef95601890afd80709"
 # ╠═8a874edc-44df-408c-89c7-e6486fd126a8
 # ╠═9096b414-aaff-4384-b5eb-72d420321cfa
 # ╠═0fc59863-f695-45fd-8347-c69863e06cfe
+# ╠═b2dbaf84-2ef4-4811-8df1-47d5c744e96a
+# ╠═13d461c9-daad-4c54-a629-86ab59c97ffe
+# ╠═cfd1b43a-2cba-4740-9a4f-267834faefa6
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
