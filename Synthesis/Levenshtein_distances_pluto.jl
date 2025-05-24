@@ -107,8 +107,99 @@ sortslices(hcat(ls,db), dims=1)
 # ╔═╡ b2dbaf84-2ef4-4811-8df1-47d5c744e96a
 parse_peptides(file) = [(m[1], m[2]) for m in eachmatch(r">(\w+)\n([A-Z]+)", read(file, String))]
 
-# ╔═╡ 13d461c9-daad-4c54-a629-86ab59c97ffe
-peptides=parse_peptides("../Synthesis/SecondRound.txt")
+# ╔═╡ 3121e65a-13b6-42c1-8c31-12dcb98ba5e0
+synth="""
+#First round of synthesis - peptides picked from the top 20 LSTM predicted peps sorted by AMP probability
+
+>peptide_1
+IVFLKLPAGKKKIL
+Ile Val Phe Leu Lys Leu Pro Ala Gly Lys Lys Lys Ile Leu
+14 amino acids; Mw=1568.17
+
+>peptide_8
+IVLPKLKCLLIK
+Ile Val Leu Pro Lys Leu Lys Cys Leu Leu Ile Lys
+12 amino acids; Mw=1380.98
+
+>peptide_10
+IKFLSLKLGLSLKK
+Ile Lys Phe Leu Ser Leu Lys Leu Gly Leu Ser Leu Lys Lys
+14 amino acids; Mw=1588.16
+
+>peptide_11
+LILKPLKLLKCLKKL
+Leu Ile Leu Lys Pro Leu Lys Leu Leu Lys Cys Leu Lys Lys Leu
+15 amino acids; Mw=1764.54
+
+#Second Round of pep synth - first 6 taken from top 20 peps sorted by AMP probability (all > 0.995), second six chosen from list sorted by lowest MIC values - named by ID tag with associated AMP probability listed.
+
+
+>peptide_8
+IVLPKLKCLLIK
+Ile Val Leu Pro Lys Leu Lys Cys Leu Leu Ile Lys
+12 amino acids; Mw=1380.98
+
+>peptide_10
+IKFLSLKLGLSLKK
+Ile Lys Phe Leu Ser Leu Lys Leu Gly Leu Ser Leu Lys Lys
+14 amino acids; Mw=1588.16
+
+>peptide_11
+LILKPLKLLKCLKKL
+Leu Ile Leu Lys Pro Leu Lys Leu Leu Lys Cys Leu Lys Lys Leu
+15 amino acids; Mw=1764.54
+
+>peptide_13
+ILFIGSLIKKRPIK
+Ile Leu Phe Ile Gly Ser Leu Ile Lys Lys Arg Pro Ile Lys
+14 amino acids; Mw=1626.22
+
+>peptide_16
+LWFIVKKLASKVLP
+Leu Trp Phe Ile Val Lys Lys Leu Ala Ser Lys Val Leu Pro
+14 amino acids; Mw=1642.19
+
+>peptide_17
+FRFPRIGIIILAVKK
+Phe Arg Phe Pro Arg Ile Gly Ile Ile Ile Leu Ala Val Lys Lys
+15 amino acids; Mw=1771.39
+
+
+
+
+>peptide_97
+VFFWLLCKLKKKLL
+Val Phe Phe Trp Leu Leu Cys Lys Leu Lys Lys Lys Leu Leu
+0.9395, 14 amino acids; Mw= 1779.44Da
+
+>peptide_1181
+VLKCLCLKLKKKLL
+Val Leu Lys Cys Leu Cys Leu Lys Leu Lys Lys Lys Leu Leu
+0.987, 14 amino acids; Mw= 1643.36
+
+>peptide_1304
+WLLLLCLKKCLKKKL
+Trp Leu Leu Leu Leu Cys Leu Lys Lys Cys Leu Lys Lys Lys Leu
+0.982, 15 amino acids; Mw= 1843.6
+
+>peptide_803
+WLILPKLKCLLKKL
+Trp Leu Ile Leu Pro Lys Leu Lys Cys Leu Leu Lys Lys Leu
+0.9935, 14 amino acids; Mw= 1709.4
+
+>peptide_1197
+KVLLLLCKLKKK
+Lys Val Leu Leu Leu Leu Cys Lys Leu Lys Lys Lys
+0.9385, 12 amino acids; Mw= 1427.05
+
+>peptide_946
+LVRIKIRPIIRPIIR
+Leu Val Arg Ile Lys Ile Arg Pro Ile Ile Arg Pro Ile Ile Arg
+0.9175, 15 amino acids; Mw= 1856.57
+"""
+
+# ╔═╡ dcbed47d-bc84-491c-aec0-8447788e08b9
+peptides=[(m[1], m[2]) for m in eachmatch(r">(\w+)\n([A-Z]+)", synth)]
 
 # ╔═╡ cfd1b43a-2cba-4740-9a4f-267834faefa6
 for pep in peptides
@@ -127,16 +218,31 @@ end
 
 # ╔═╡ fd8b68c3-38f8-4d1b-8ad1-36c6b5bdb287
 for pep in peptides
-	println("Peptide : $(pep[1]) \tSeq: $(pep[2])")
+	println("## Peptide : $(pep[1]) \tSeq: $(pep[2])")
 
 # putting a cost of 2x for addition and deletion of codons vs. substitution:
 	ls=[levenshtein(pep[2],p, 2,2,1) for p in db]
 	scores=unique(sortslices(hcat(ls,db), dims=1),dims=1)
 
+	# print-out as Markdown for copy+pasting into Zulip, with link to DBAASP
 	for i in 1:10
-		println("    Match distance: $(scores[i,:][1])  \tSeq: $(scores[i,:][2])")
+		URL="https://www.dbaasp.org/search?sequence.value=$(scores[i,:][2])"
+		
+		println("[Match distance: $(scores[i,:][1])  \tSeq: $(scores[i,:][2])]($(URL))")
 	end
 end
+
+# ╔═╡ f5cfaf6a-2d8a-46ee-8cde-bcd349b80147
+
+
+# ╔═╡ 1505c061-9328-473c-8f94-187d6193184f
+
+
+# ╔═╡ 056a915f-83f1-476e-9538-ff27b5f80078
+
+
+# ╔═╡ 81efd062-d896-490e-bd1e-24b94234f9b0
+
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -168,9 +274,14 @@ project_hash = "da39a3ee5e6b4b0d3255bfef95601890afd80709"
 # ╠═9096b414-aaff-4384-b5eb-72d420321cfa
 # ╠═0fc59863-f695-45fd-8347-c69863e06cfe
 # ╠═b2dbaf84-2ef4-4811-8df1-47d5c744e96a
-# ╠═13d461c9-daad-4c54-a629-86ab59c97ffe
+# ╟─3121e65a-13b6-42c1-8c31-12dcb98ba5e0
+# ╠═dcbed47d-bc84-491c-aec0-8447788e08b9
 # ╠═cfd1b43a-2cba-4740-9a4f-267834faefa6
 # ╠═7751afa6-170a-4979-b3b4-d62ed8adfe55
 # ╠═fd8b68c3-38f8-4d1b-8ad1-36c6b5bdb287
+# ╠═f5cfaf6a-2d8a-46ee-8cde-bcd349b80147
+# ╠═1505c061-9328-473c-8f94-187d6193184f
+# ╠═056a915f-83f1-476e-9538-ff27b5f80078
+# ╠═81efd062-d896-490e-bd1e-24b94234f9b0
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
