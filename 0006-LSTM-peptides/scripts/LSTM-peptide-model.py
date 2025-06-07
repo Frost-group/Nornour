@@ -19,7 +19,7 @@ print(device)
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and test LSTM model for peptide sequences')
 
-    parser.add_argument('--dataset_path', type=str, default='../../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides', help='Path to the dataset to use for training')
+    parser.add_argument('--dataset_path', type=str, default='../../0003d-DBAASP-Database/DBAASP', help='Path to the dataset to use for training')
     parser.add_argument('--output_size', type=int, default=21, help='Size of the output layer (default: 22)')
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs for training (default: 100)')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size for training and testing (default: 8)')
@@ -32,7 +32,6 @@ def parse_args():
     parser.add_argument('--save_model', type=bool, default=False, help='Save the trained model (default: False)')
 
     args = parser.parse_args()
-
     return args
 
 

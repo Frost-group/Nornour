@@ -16,7 +16,7 @@ print(f"Using device: {device}")
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and generate peptides using LSTM model')
 
-    parser.add_argument('--dataset_path', type=str, default='../../0003d-DBAASP-Database/Database_of_Antimicrobial_Activity_and_structure_of_Peptides', help='Path to the dataset used for training')
+    parser.add_argument('--dataset_path', type=str, default='../../0003d-DBAASP-Database/DBAASP', help='Path to the dataset used for training')
     parser.add_argument('--output_path', type=str, default='d', help='Path to the output file for generated sequences (.fasta format), -d for default file storage')
     parser.add_argument('--model_path', type=str, default='../models/lstm_peptides_model.pt', help='Path to the trained model')
     parser.add_argument('--output_size', type=int, default=21, help='Size of the output layer (default: 22)')

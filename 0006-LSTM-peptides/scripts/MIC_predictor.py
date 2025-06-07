@@ -278,7 +278,7 @@ class LSTMActivityPredictor(nn.Module):
     Args:
         - embedding_dim (int): Dimension of the embedding vectors for sequence tokens.
         - hidden_dim (int): Number of hidden units in the LSTM.
-        - aa_comp_dim (int): Dimensionality of the amino acid composition feature vector.
+        - aa_comp_dim (int): DimensionaliA ty of the amino acid composition feature vector.
         - ctd_dim (int): Dimensionality of the CTD (composition, transition, distribution) feature vector.
         - qso_dim (int): Dimensionality of the quasi-sequence order feature vector.
         - vocab_size (int): Size of the vocabulary (number of unique sequence tokens).
@@ -513,13 +513,7 @@ def activity_predictor(sequence, model, max_seq_len, min_mic, max_mic, mins_ctd,
 def main():
     args = get_args()
     data = []
-    if args.data_path == 'd':
-        today = datetime.today().strftime("%d-%m-%Y")
-        base_dir = f"../data/gen_{today}"
-        gen_count = len([d for d in os.listdir(base_dir) if today in d]) + 1
-        data_path = f'{base_dir}/generated_peptides_{gen_count}/sorted_peptides.fasta'
-    else:
-        data_path = args.data_path
+    data_path = args.data_path
 
     with open(data_path, "r") as infile:
         headers = infile.readline().strip()
