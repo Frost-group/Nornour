@@ -104,7 +104,11 @@ function extract_dramp_data(csv_file::String; verbose::Bool=false)
         
         if !isempty(mic_entries)
             mic_vals = [v for (_, v) in mic_entries if !ismissing(v) && v > 0]
-            
+        
+            if verbose && !isempty(mic_vals)
+                println("OK, extracted $(length(mic_vals)) MICs as $mic_vals µg/ml,  geomean $(geomean(mic_vals)) µg/ml")
+            end
+
             if !isempty(mic_vals)
                 push!(result, (
                     string(dramp_id),
@@ -117,7 +121,7 @@ function extract_dramp_data(csv_file::String; verbose::Bool=false)
             end
         end
 
-        verbose && i > 10 && break # just do first 10 for println debugging of unit conversions 
+        verbose && i > 200 && break # just do first N for println debugging of unit conversions 
     end
     
     return result
