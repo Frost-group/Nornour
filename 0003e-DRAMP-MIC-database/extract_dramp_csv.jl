@@ -1,6 +1,5 @@
 using CSV
 using DataFrames
-using Unitful
 
 # Amino acid residue masses (average, in Da) - mass of AA minus H2O lost in peptide bond
 const AA_RESIDUE_MW = Dict{Char, Float64}(
@@ -20,95 +19,56 @@ function peptide_mw(sequence::AbstractString)::Float64
     return mw
 end
 
-# Function to parse MIC values with units from DRAMP format
-function parse_mic(mic_string::AbstractString)
-    # Handle missing or empty values
-    if ismissing(mic_string) || isempty(strip(mic_string))
-        return missing
-    end
+# Extract organism-MIC pairs from Target_Organism field and convert to μg/mL
+function extract_mic_entries(target_organism::AbstractString, mw::Float64; verbose::Bool=false)
+    entries = Tuple{String, Union{Missing, Float64}}[]
+    pattern = r"([^,(]+?)\s*\(MIC[=≤≥<>~]*\s*([\d.]+)\s*([^)]+)\)"
     
-    mic_string = strip(mic_string)
-    
-    # DRAMP MIC format: "Species name (MIC=value unit)"
-    # Extract number and unit using regex
-    # Matches patterns like: MIC=0.304 μg/ml, MIC≤0.13 μg/ml, MIC=2 mg/mL, MIC=5 mM
-    match_result = match(r"MIC[=≤≥<>~]*\s*([\d.]+)\s*([μum]?[Gg]/[mM][lL]|[μum]?[MmGg])", mic_string)
-    
-    if match_result === nothing
-        return missing
-    end
-    
-    value = tryparse(Float64, match_result.captures[1])
-    if value === nothing
-        @warn "Could not parse MIC value: $(match_result.captures[1]) in $mic_string"
-        return missing
-    end
-    unit_str = match_result.captures[2]
-    
-    # Normalize unit string and convert to Unitful
-    unit_str_lower = lowercase(unit_str)
-    
-    if occursin("μg/ml", unit_str_lower) || occursin("ug/ml", unit_str_lower)
-        return value * u"μg/mL"
-    elseif occursin("mg/ml", unit_str_lower)
-        return value * u"mg/mL"
-    elseif occursin("μm", unit_str_lower) || occursin("um", unit_str_lower)
-        return value * u"μM"
-    elseif occursin("mm", unit_str_lower)
-        return value * u"mM"
-    elseif occursin("μg", unit_str_lower) || occursin("ug", unit_str_lower)
-        return value * u"μg/mL"  # Assume per mL if not specified
-    elseif occursin("mg", unit_str_lower)
-        return value * u"mg/mL"
-    else
-        @warn "Unknown unit: $unit_str in $mic_string"
-        return missing
-    end
-end
-
-# Function to extract individual organism-MIC pairs from Target_Organism field
-function extract_mic_entries(target_organism_string::AbstractString)
-    # Split by comma, but be careful with commas inside parentheses
-    entries = Tuple{String, Any}[]
-    
-    # Find all organism entries with MIC values
-    # Pattern: "Organism name (MIC=value unit)"
-    pattern = r"([^,(]+?)\s*\(MIC[=≤≥<>~]*\s*[\d.]+\s*[μum]?[MmGg](?:/[mM][lL])?\)"
-    
-    for m in eachmatch(pattern, target_organism_string)
-        full_match = m.match
+    for m in eachmatch(pattern, target_organism)
         organism = strip(m.captures[1])
-        mic_value = parse_mic(full_match)
-        push!(entries, (organism, mic_value))
+        value = tryparse(Float64, m.captures[2])
+        unit_raw = strip(m.captures[3])
+        unit_str = lowercase(replace(replace(unit_raw, 'µ' => 'μ'), ' ' => ""))  # normalize
+        
+        verbose && println("Organism: $organism, Value: $value, Unit: $unit_raw")
+        
+        if value === nothing
+            push!(entries, (organism, missing))
+            continue
+        end
+        
+        mic_ug_ml = if occursin(r"[μu]g/m", unit_str) || occursin("mg/l", unit_str)
+            value
+        elseif occursin("ng/ml", unit_str)
+            value / 1000.0
+        elseif occursin("mg/ml", unit_str)
+            value * 1000.0
+        elseif occursin("pm", unit_str) || occursin("pmol", unit_str)
+            value * mw / 1e9
+        elseif occursin("nm", unit_str)
+            value * mw / 1e6
+        elseif occursin(r"[μu]m", unit_str) || occursin("microm", unit_str)
+            value * mw / 1000.0
+        elseif occursin("mm", unit_str)
+            value * mw
+        else
+            @warn "Unhandled unit '$unit_raw' for =$value $organism - skipping"
+            missing
+        end
+
+        verbose && println("Attempted unit conversion Value: $value, Unit: $unit_raw, Converted to: $mic_ug_ml")
+        
+        push!(entries, (organism, mic_ug_ml))
     end
     
     return entries
-end
-
-# Convert single MIC value to μg/mL using peptide MW for molar units
-function mic_to_ug_per_ml(mic, mw::Float64)::Union{Missing, Float64}
-    ismissing(mic) && return missing
-    mic_unit = unit(mic)
-    mic_val = ustrip(mic)
-    
-    if mic_unit == u"μg/mL"
-        return mic_val
-    elseif mic_unit == u"mg/mL"
-        return mic_val * 1000.0
-    elseif mic_unit == u"μM"
-        return mic_val * mw / 1000.0
-    elseif mic_unit == u"mM"
-        return mic_val * mw
-    else
-        return missing
-    end
 end
 
 # Geometric mean, ignoring missing values
 geomean(x) = exp(sum(log, x) / length(x))
 
 # Function to extract DRAMP data from CSV
-function extract_dramp_data(csv_file::String)
+function extract_dramp_data(csv_file::String; verbose::Bool=false)
     df = CSV.read(csv_file, DataFrame, stringtype=String)
     
     println("Available columns: ", names(df))
@@ -123,23 +83,27 @@ function extract_dramp_data(csv_file::String)
         MIC_geomean_ug_mL = Union{Missing, Float64}[]
     )
     
-    for row in eachrow(df)
+    for (i, row) in enumerate(eachrow(df))
         dramp_id = row.DRAMP_ID
         sequence = row.Sequence
         seq_length = row.Sequence_Length
         name = row.Name
         target_org_field = row.Target_Organism
-        
-        mic_entries = extract_mic_entries(target_org_field)
+       
+        if verbose
+            println("DRAMP_ID: $dramp_id")
+            println("Sequence: $sequence")
+            println("Sequence_Length: $seq_length")
+            println("Name: $name")
+            println("Target_Organism (should contain MICs): $target_org_field")
+        end
+
+        ismissing(sequence) && continue
+        mw = peptide_mw(sequence)
+        mic_entries = extract_mic_entries(target_org_field, mw, verbose=verbose)
         
         if !isempty(mic_entries)
-            mw = peptide_mw(sequence)
-            # Convert all MIC values to μg/mL and filter out missing
-            mic_vals = Float64[]
-            for (_, mic_val) in mic_entries
-                converted = mic_to_ug_per_ml(mic_val, mw)
-                !ismissing(converted) && converted > 0 && push!(mic_vals, converted)
-            end
+            mic_vals = [v for (_, v) in mic_entries if !ismissing(v) && v > 0]
             
             if !isempty(mic_vals)
                 push!(result, (
@@ -152,6 +116,8 @@ function extract_dramp_data(csv_file::String)
                 ))
             end
         end
+
+        verbose && i > 10 && break # just do first 10 for println debugging of unit conversions 
     end
     
     return result
@@ -165,11 +131,14 @@ function main()
     println("WARNING! Its a bit more complex than this - some of the AMPs have long lipid chains etc.; and I'm just geometric meaning the total activity converted to micrograms/ml, and god knows whether that is in anyway reliable...HERE BE DRAGONS!")
     println("=" ^ 60)
     
-    data = extract_dramp_data(csv_file)
+    data = extract_dramp_data(csv_file, verbose=false)
     
     println("\n✓ Extracted $(nrow(data)) peptides with MIC data")
     println("\nFirst 10 entries:")
     println(first(data, 10))
+
+    println("\nTop 10 entries by MIC value:")
+    println(first(sort(data, :MIC_geomean_ug_mL), 10))
     
     # Save processed data
     output_file = "dramp_geometric_MIC.csv"
@@ -180,7 +149,7 @@ function main()
     println("\n" * "=" ^ 60)
     println("Summary Statistics")
     println("=" ^ 60)
-    println("Total peptides: ", nrow(data))
+    println("Total peptides with some MIC data: ", nrow(data))
     println("Total organism-MIC measurements: ", sum(data.n_organisms))
     println("MIC range (μg/mL): ", round(minimum(data.MIC_geomean_ug_mL), digits=3), " - ", round(maximum(data.MIC_geomean_ug_mL), digits=3))
     
