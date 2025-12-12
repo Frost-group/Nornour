@@ -80,7 +80,7 @@ function extract_dramp_data(csv_file::String; verbose::Bool=false)
         Sequence_Length = Int[],
  #       Name = String[],
         n_organisms = Int[],
-        MIC_geomean_ug_mL = Union{Missing, Float64}[]
+        MIC = Union{Missing, Float64}[]
     )
     
     for (i, row) in enumerate(eachrow(df))
@@ -142,7 +142,7 @@ function main()
     println(first(data, 10))
 
     println("\nTop 10 entries by MIC value:")
-    println(first(sort(data, :MIC_geomean_ug_mL), 10))
+    println(first(sort(data, :MIC), 10))
     
     # Save processed data
     output_file = "dramp_geometric_MIC.csv"
@@ -155,7 +155,7 @@ function main()
     println("=" ^ 60)
     println("Total peptides with some MIC data: ", nrow(data))
     println("Total organism-MIC measurements: ", sum(data.n_organisms))
-    println("MIC range (μg/mL): ", round(minimum(data.MIC_geomean_ug_mL), digits=3), " - ", round(maximum(data.MIC_geomean_ug_mL), digits=3))
+    println("MIC range (μg/mL): ", round(minimum(data.MIC), digits=3), " - ", round(maximum(data.MIC), digits=3))
     
     return data
 end
