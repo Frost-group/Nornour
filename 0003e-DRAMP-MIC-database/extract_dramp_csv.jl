@@ -19,6 +19,17 @@ function peptide_mw(sequence::AbstractString)::Float64
     return mw
 end
 
+const GRAM_NEGATIVE_PATTERNS = [
+    r"coli"i, r"pseudomonas"i, r"klebsiella"i, r"acinetobacter"i,
+    r"salmonella"i, r"shigella"i, r"enterobacter"i, r"proteus"i,
+    r"serratia"i, r"neisseria"i, r"haemophilus"i, r"helicobacter"i,
+    r"campylobacter"i, r"vibrio"i, r"yersinia"i, r"legionella"i,
+    r"burkholderia"i, r"stenotrophomonas"i, r"citrobacter"i, r"morganella"i,
+    r"providencia"i, r"bordetella"i, r"brucella"i, r"moraxella"i
+]
+
+is_gram_negative(organism::AbstractString) = any(p -> occursin(p, organism), GRAM_NEGATIVE_PATTERNS)
+
 # Extract organism-MIC pairs from Target_Organism field and convert to μg/mL
 function extract_mic_entries(target_organism::AbstractString, mw::Float64; verbose::Bool=false)
     entries = Tuple{String, Union{Missing, Float64}}[]
@@ -26,6 +37,9 @@ function extract_mic_entries(target_organism::AbstractString, mw::Float64; verbo
     
     for m in eachmatch(pattern, target_organism)
         organism = strip(m.captures[1])
+        
+        is_gram_negative(organism) || continue
+
         value = tryparse(Float64, m.captures[2])
         unit_raw = strip(m.captures[3])
         unit_str = lowercase(replace(replace(unit_raw, 'µ' => 'μ'), ' ' => ""))  # normalize
@@ -145,7 +159,7 @@ function main()
     println(first(sort(data, :MIC), 10))
     
     # Save processed data
-    output_file = "dramp_geometric_MIC.csv"
+    output_file = "dramp_gram_negative.csv"
     CSV.write(output_file, data)
     println("\n✓ Processed data saved to $output_file")
     

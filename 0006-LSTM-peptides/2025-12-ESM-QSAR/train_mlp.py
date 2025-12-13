@@ -9,10 +9,13 @@ Usage:
 """
 
 import argparse
+from datetime import datetime
+
 import numpy as np
 import h5py
 import torch
 import torch.nn as nn
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.utils.data import Dataset, DataLoader, random_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score, mean_absolute_error
@@ -36,17 +39,32 @@ def get_args():
                         choices=['esm', 'qsar', 'both'],
                         help="Which features to use: 'esm', 'qsar', or 'both'")
     
-    # Architecture
-    parser.add_argument('--hidden_dims', type=int, nargs='+', default=[64, 32, 16],
-                        help="Hidden layer dimensions (e.g., --hidden_dims 64 32 16)")
+    # Model type
+    parser.add_argument('--model', type=str, default='mlp',
+                        choices=['mlp', 'bilstm'],
+                        help="Model type: 'mlp' (mean-pooled ESM) or 'bilstm' (full ESM sequence)")
+    
+    # Architecture (MLP)
+    parser.add_argument('--hidden_dims', type=int, nargs='+', default=[256, 128, 64],
+                        help="Hidden layer dimensions (e.g., --hidden_dims 256 128 64)")
     parser.add_argument('--dropout', type=float, default=0.3,
                         help="Dropout probability")
     parser.add_argument('--activation', type=str, default='gelu',
                         choices=['relu', 'gelu', 'silu', 'tanh'],
                         help="Activation function")
     
+    # Architecture (BiLSTM)
+    parser.add_argument('--lstm_hidden', type=int, default=128,
+                        help="BiLSTM hidden dimension")
+    parser.add_argument('--lstm_layers', type=int, default=1,
+                        help="Number of BiLSTM layers")
+    parser.add_argument('--mlp_hidden', type=int, nargs='+', default=[128, 64],
+                        help="MLP head hidden dimensions for BiLSTM model")
+    parser.add_argument('--pure_bilstm', action='store_true',
+                        help="Pure BiLSTM without QSAR features (ESM sequence only)")
+    
     # Training
-    parser.add_argument('--epochs', type=int, default=150,
+    parser.add_argument('--epochs', type=int, default=40,
                         help="Training epochs")
     parser.add_argument('--batch_size', type=int, default=64,
                         help="Batch size")
@@ -89,6 +107,21 @@ class PeptideDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
+
+class PeptideDatasetFull(Dataset):
+    """Dataset for BiLSTM: full ESM embeddings + QSAR features + lengths."""
+    def __init__(self, esm_full: np.ndarray, qsar: np.ndarray, lengths: np.ndarray, y: np.ndarray):
+        self.esm_full = torch.tensor(esm_full, dtype=torch.float32)
+        self.qsar = torch.tensor(qsar, dtype=torch.float32)
+        self.lengths = torch.tensor(lengths, dtype=torch.long)
+        self.y = torch.tensor(y, dtype=torch.float32).unsqueeze(1)
+        
+    def __len__(self):
+        return len(self.y)
+    
+    def __getitem__(self, idx):
+        return self.esm_full[idx], self.qsar[idx], self.lengths[idx], self.y[idx]
+
 # ============================================================================
 # MODEL
 # ============================================================================
@@ -111,6 +144,77 @@ class MLP(nn.Module):
         
     def forward(self, x):
         return self.net(x)
+
+
+class BiLSTM_QSAR(nn.Module):
+    """
+    BiLSTM over full ESM embeddings, optionally combined with QSAR features.
+    
+    Architecture:
+        ESM [Batch, SeqLen, ESM_dim] -> BiLSTM -> [Batch, 2*lstm_hidden]
+        (Optional) Concatenate with QSAR [Batch, qsar_dim]
+        -> MLP head -> MIC prediction
+    """
+    def __init__(self, esm_dim: int, qsar_dim: int = 0, lstm_hidden: int = 128, 
+                 lstm_layers: int = 1, mlp_hidden: list[int] = [64, 32],
+                 dropout: float = 0.3, activation: str = 'gelu'):
+        super().__init__()
+        self.use_qsar = qsar_dim > 0
+        
+        self.lstm = nn.LSTM(
+            input_size=esm_dim,
+            hidden_size=lstm_hidden,
+            num_layers=lstm_layers,
+            batch_first=True,
+            bidirectional=True,
+            dropout=dropout if lstm_layers > 1 else 0
+        )
+        
+        # BiLSTM output (2*hidden for bidirectional) + optional QSAR features
+        combined_dim = 2 * lstm_hidden + (qsar_dim if self.use_qsar else 0)
+        
+        # MLP head
+        layers = []
+        prev_dim = combined_dim
+        for h_dim in mlp_hidden:
+            layers.extend([
+                nn.Linear(prev_dim, h_dim),
+                get_activation(activation),
+                nn.Dropout(dropout)
+            ])
+            prev_dim = h_dim
+        layers.append(nn.Linear(prev_dim, 1))
+        self.mlp = nn.Sequential(*layers)
+        
+    def forward(self, esm_embeddings, qsar_features, lengths):
+        """
+        Args:
+            esm_embeddings: [Batch, SeqLen, ESM_dim] - full ESM embeddings
+            qsar_features: [Batch, QSAR_dim] - QSAR feature vectors (ignored if use_qsar=False)
+            lengths: [Batch] - actual sequence lengths for packing
+        """
+        # Pack sequences for efficient LSTM processing (ignores padding)
+        packed = pack_padded_sequence(
+            esm_embeddings, lengths.cpu(),
+            batch_first=True, enforce_sorted=False
+        )
+        
+        # BiLSTM forward pass
+        _, (h_n, _) = self.lstm(packed)
+        # h_n: [num_layers * 2, Batch, hidden] for bidirectional
+        
+        # Concatenate final forward and backward hidden states
+        h_forward = h_n[-2]   # [Batch, hidden]
+        h_backward = h_n[-1]  # [Batch, hidden]
+        lstm_out = torch.cat([h_forward, h_backward], dim=-1)  # [Batch, 2*hidden]
+        
+        # Combine with QSAR features if enabled
+        if self.use_qsar:
+            combined = torch.cat([lstm_out, qsar_features], dim=-1)
+        else:
+            combined = lstm_out
+        
+        return self.mlp(combined)
 
 # ============================================================================
 # EVALUATION METRICS
@@ -213,6 +317,38 @@ def evaluate(model, loader, device):
         all_targets.append(y_batch.numpy())
     return np.vstack(all_preds).flatten(), np.vstack(all_targets).flatten()
 
+
+def train_epoch_bilstm(model, loader, criterion, optimizer, device):
+    """Single training epoch for BiLSTM model."""
+    model.train()
+    total_loss = 0.0
+    for esm_batch, qsar_batch, len_batch, y_batch in loader:
+        esm_batch = esm_batch.to(device)
+        qsar_batch = qsar_batch.to(device)
+        y_batch = y_batch.to(device)
+        
+        optimizer.zero_grad()
+        pred = model(esm_batch, qsar_batch, len_batch)
+        loss = criterion(pred, y_batch)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item() * len(y_batch)
+    return total_loss / len(loader.dataset)
+
+
+@torch.no_grad()
+def evaluate_bilstm(model, loader, device):
+    """Evaluate BiLSTM model. Returns predictions and targets."""
+    model.eval()
+    all_preds, all_targets = [], []
+    for esm_batch, qsar_batch, len_batch, y_batch in loader:
+        esm_batch = esm_batch.to(device)
+        qsar_batch = qsar_batch.to(device)
+        pred = model(esm_batch, qsar_batch, len_batch)
+        all_preds.append(pred.cpu().numpy())
+        all_targets.append(y_batch.numpy())
+    return np.vstack(all_preds).flatten(), np.vstack(all_targets).flatten()
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -224,6 +360,8 @@ def main():
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}")
+    model_desc = args.model.upper() + (" (pure, no QSAR)" if args.model == 'bilstm' and args.pure_bilstm else "")
+    print(f"Model type: {model_desc}")
     
     # 1. Load data
     print(f"\n[1] Loading data from: {args.h5_file}")
@@ -231,44 +369,94 @@ def main():
         esm_embeddings = hf['esm_embeddings'][:]
         qsar_features = hf['qsar_features'][:]
         log_mic = hf['log_mic'][:]
-        print(f"    ESM: {esm_embeddings.shape}, QSAR: {qsar_features.shape}, Targets: {log_mic.shape}")
-    
-    if args.feature_type == 'esm':
-        X = esm_embeddings
-    elif args.feature_type == 'qsar':
-        X = qsar_features
-    else:
-        X = np.hstack([esm_embeddings, qsar_features])
-    print(f"    Using: {args.feature_type} -> {X.shape[1]} features")
+        print(f"    ESM (pooled): {esm_embeddings.shape}, QSAR: {qsar_features.shape}, Targets: {log_mic.shape}")
+        
+        # Load full embeddings for BiLSTM mode
+        if args.model == 'bilstm':
+            esm_full = hf['esm_full'][:]
+            seq_lengths = hf['seq_lengths'][:]
+            print(f"    ESM (full): {esm_full.shape}, Lengths: {seq_lengths.shape}")
     
     y = log_mic
     
-    # 2. Normalise features
+    # 2. Normalise QSAR features
     print("\n[2] Normalising features")
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X)
+    qsar_scaler = StandardScaler()
+    qsar_normed = qsar_scaler.fit_transform(qsar_features)
+    
+    if args.model == 'mlp':
+        # MLP mode: concatenate pooled ESM + QSAR
+        esm_scaler = StandardScaler()
+        esm_normed = esm_scaler.fit_transform(esm_embeddings)
+        
+        if args.feature_type == 'esm':
+            X = esm_normed
+        elif args.feature_type == 'qsar':
+            X = qsar_normed
+        else:
+            X = np.hstack([esm_normed, qsar_normed])
+        print(f"    Using: {args.feature_type} -> {X.shape[1]} features")
     
     # 3. Train/Val/Test split
     print(f"\n[3] Splitting data")
-    dataset = PeptideDataset(X, y)
-    n_total = len(dataset)
+    n_total = len(y)
     n_test = int(n_total * args.test_frac)
     n_val = int(n_total * args.val_frac)
     n_train = n_total - n_val - n_test
-    
-    train_ds, val_ds, test_ds = random_split(
-        dataset, [n_train, n_val, n_test],
-        generator=torch.Generator().manual_seed(args.seed)
-    )
     print(f"    Train: {n_train}, Val: {n_val}, Test: {n_test}")
     
-    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=args.batch_size)
-    test_loader = DataLoader(test_ds, batch_size=args.batch_size)
+    # Use torch-based splitting for reproducibility (matches original random_split behavior)
+    torch_gen = torch.Generator().manual_seed(args.seed)
+    all_indices = torch.randperm(n_total, generator=torch_gen).numpy()
+    
+    train_idx = all_indices[:n_train]
+    val_idx = all_indices[n_train:n_train + n_val]
+    test_idx = all_indices[n_train + n_val:]
+    
+    if args.model == 'mlp':
+        # MLP datasets
+        train_ds = PeptideDataset(X[train_idx], y[train_idx])
+        val_ds = PeptideDataset(X[val_idx], y[val_idx])
+        test_ds = PeptideDataset(X[test_idx], y[test_idx])
+        
+        train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
+        val_loader = DataLoader(val_ds, batch_size=args.batch_size)
+        test_loader = DataLoader(test_ds, batch_size=args.batch_size)
+    else:
+        # BiLSTM datasets
+        train_ds = PeptideDatasetFull(esm_full[train_idx], qsar_normed[train_idx], 
+                                       seq_lengths[train_idx], y[train_idx])
+        val_ds = PeptideDatasetFull(esm_full[val_idx], qsar_normed[val_idx],
+                                     seq_lengths[val_idx], y[val_idx])
+        test_ds = PeptideDatasetFull(esm_full[test_idx], qsar_normed[test_idx],
+                                      seq_lengths[test_idx], y[test_idx])
+        
+        train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
+        val_loader = DataLoader(val_ds, batch_size=args.batch_size)
+        test_loader = DataLoader(test_ds, batch_size=args.batch_size)
     
     # 4. Build model
-    print(f"\n[4] Building MLP: {X.shape[1]} -> {args.hidden_dims} -> 1")
-    model = MLP(X.shape[1], args.hidden_dims, args.dropout, args.activation).to(device)
+    if args.model == 'mlp':
+        print(f"\n[4] Building MLP: {X.shape[1]} -> {args.hidden_dims} -> 1")
+        model = MLP(X.shape[1], args.hidden_dims, args.dropout, args.activation).to(device)
+    else:
+        esm_dim = esm_full.shape[2]
+        qsar_dim = 0 if args.pure_bilstm else qsar_normed.shape[1]
+        model_name = "BiLSTM (pure)" if args.pure_bilstm else "BiLSTM_QSAR"
+        print(f"\n[4] Building {model_name}:")
+        print(f"    ESM dim: {esm_dim}" + (f", QSAR dim: {qsar_dim}" if not args.pure_bilstm else ""))
+        print(f"    LSTM: {args.lstm_hidden} hidden x {args.lstm_layers} layers (bidirectional)")
+        print(f"    MLP head: {args.mlp_hidden} -> 1")
+        model = BiLSTM_QSAR(
+            esm_dim=esm_dim,
+            qsar_dim=qsar_dim,
+            lstm_hidden=args.lstm_hidden,
+            lstm_layers=args.lstm_layers,
+            mlp_hidden=args.mlp_hidden,
+            dropout=args.dropout,
+            activation=args.activation
+        ).to(device)
+    
     n_params = sum(p.numel() for p in model.parameters())
     print(f"    Parameters: {n_params:,}")
     
@@ -280,21 +468,32 @@ def main():
     train_losses, val_losses, val_spearman = [], [], []
     
     for epoch in range(1, args.epochs + 1):
-        train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
-        train_losses.append(train_loss)
+        if args.model == 'mlp':
+            train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+            val_preds, val_targets = evaluate(model, val_loader, device)
+        else:
+            train_loss = train_epoch_bilstm(model, train_loader, criterion, optimizer, device)
+            val_preds, val_targets = evaluate_bilstm(model, val_loader, device)
         
-        val_preds, val_targets = evaluate(model, val_loader, device)
+        train_losses.append(train_loss)
         val_loss = ((val_preds - val_targets) ** 2).mean()
         val_losses.append(val_loss)
         rho, _ = spearmanr(val_targets, val_preds)
         val_spearman.append(rho)
         
-        if epoch % 10 == 0 or epoch == 1:
-            print(f"    Epoch {epoch:3d}: train={train_loss:.4f}, val={val_loss:.4f}, ρ={rho:.3f}")
+#        if epoch % 10 == 0 or epoch == 1:
+        print(f"    Epoch {epoch:3d}: train={train_loss:.4f}, val={val_loss:.4f}, ρ={rho:.3f}")
     
     # 6. Final evaluation
     print(f"\n[6] Final Evaluation on Test Set")
-    test_preds, test_targets = evaluate(model, test_loader, device)
+    if args.model == 'mlp':
+        train_preds, train_targets = evaluate(model, train_loader, device)
+        val_preds, val_targets = evaluate(model, val_loader, device)
+        test_preds, test_targets = evaluate(model, test_loader, device)
+    else:
+        train_preds, train_targets = evaluate_bilstm(model, train_loader, device)
+        val_preds, val_targets = evaluate_bilstm(model, val_loader, device)
+        test_preds, test_targets = evaluate_bilstm(model, test_loader, device)
     metrics = compute_metrics(test_targets, test_preds)
     
     print(f"\n    --- Regression Metrics ---")
@@ -314,13 +513,17 @@ def main():
     
     # 7. Save model
     if args.save_model:
-        torch.save({
+        save_dict = {
             'model_state_dict': model.state_dict(),
-            'scaler_mean': scaler.mean_,
-            'scaler_scale': scaler.scale_,
+            'qsar_scaler_mean': qsar_scaler.mean_,
+            'qsar_scaler_scale': qsar_scaler.scale_,
             'args': vars(args),
             'metrics': metrics,
-        }, args.save_model)
+        }
+        if args.model == 'mlp' and args.feature_type != 'qsar':
+            save_dict['esm_scaler_mean'] = esm_scaler.mean_
+            save_dict['esm_scaler_scale'] = esm_scaler.scale_
+        torch.save(save_dict, args.save_model)
         print(f"\n    Model saved to: {args.save_model}")
     
     # 8. Visualisation
@@ -342,15 +545,27 @@ def main():
         ax1b.set_ylim(0, 1)
         ax1.set_title('Training Progress')
         
-        # Scatter plot
+        # Scatter plot (train / val / test)
         ax2 = axes[1]
-        ax2.scatter(test_targets, test_preds, alpha=0.5, edgecolors='none', s=20)
-        lims = [min(test_targets.min(), test_preds.min()), max(test_targets.max(), test_preds.max())]
-        ax2.plot(lims, lims, 'r--', alpha=0.8, label='Ideal')
+        ax2.scatter(train_targets, train_preds, 
+                    alpha=0.25, edgecolors='none', s=5, c='blue', label='Train',
+                    marker='x' )
+#        ax2.scatter(val_targets, val_preds, 
+#                    alpha=0.5, edgecolors='none', s=10, c='#ff7f0e', label='Val',
+#                    marker='o' )
+        ax2.scatter(test_targets, test_preds, 
+                    alpha=0.7, edgecolors='none', s=10, c='orange', label='Test',
+                    marker='o' )
+        # Consistent axis limits based on full target range
+        pad = 0.1 * (y.max() - y.min())
+        lims = [y.min() - pad, y.max() + pad]
+        ax2.plot(lims, lims, 'k--', alpha=0.6, linewidth=1, label='Ideal')
+        ax2.set_xlim(lims)
+        ax2.set_ylim(lims)
         ax2.set_xlabel('Actual log₁₀(MIC)')
         ax2.set_ylabel('Predicted log₁₀(MIC)')
-        ax2.set_title(f'Test Set: R² = {metrics["R²"]:.3f}, ρ = {metrics["Spearman ρ"]:.3f}')
-        ax2.legend()
+        ax2.set_title(f'Test: R² = {metrics["R²"]:.3f}, ρ = {metrics["Spearman ρ"]:.3f}')
+        ax2.legend(loc='upper left', fontsize=8, framealpha=0.9)
         ax2.set_aspect('equal', 'box')
         
         # Enrichment curve
@@ -383,6 +598,17 @@ def main():
         ax3.set_ylim(0, n_potent * 1.1)
         
         plt.tight_layout()
+        
+        # Compact run info footer
+        if args.model == 'mlp':
+            model_info = f"MLP {args.hidden_dims}"
+        else:
+            model_info = f"BiLSTM h={args.lstm_hidden}×{args.lstm_layers}" + (" +QSAR" if not args.pure_bilstm else "")
+        info_str = (f"{datetime.now():%Y-%m-%d %H:%M} | {args.h5_file} | {model_info} | "
+                    f"lr={args.lr} drop={args.dropout} | N={len(y)}")
+        fig.text(0.5, 0.01, info_str, ha='center', fontsize=7, color='gray', family='monospace')
+        
+        plt.subplots_adjust(bottom=0.12)
         plt.savefig(args.plot_path, dpi=150)
         print(f"\n    Plot saved to: {args.plot_path}")
         plt.show()

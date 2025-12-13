@@ -16,6 +16,7 @@ import os
 ESM_MODEL_NAME = "facebook/esm2_t30_150M_UR50D"
 BATCH_SIZE = 32
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+MAX_SEQ_LEN = 64  # Maximum peptide length for full embeddings (covers most AMPs)
 # 8M model super fast on my Mac cpu only
 # 150M model on my Mac Studio CPU at work takes about 2 mins to run ~2000 sequences
 
@@ -83,6 +84,44 @@ def extract_esm_embeddings(sequences, tokenizer, model):
         
     return np.vstack(embeddings)
 
+
+def extract_esm_embeddings_full(sequences, tokenizer, model, max_len=MAX_SEQ_LEN):
+    """
+    Extract full ESM embeddings [N_samples, max_len, hidden_dim] for BiLSTM processing.
+    
+    Returns:
+        embeddings: np.ndarray [N, max_len, hidden_dim] - padded full sequence embeddings
+        lengths: np.ndarray [N] - actual sequence lengths (excluding special tokens)
+    """
+    model.eval()
+    all_embeddings = []
+    all_lengths = []
+    
+    for i in tqdm(range(0, len(sequences), BATCH_SIZE), desc="Extracting Full ESM Embeddings"):
+        batch_seqs = sequences[i : i + BATCH_SIZE]
+        
+        # Pad to max_len for consistent tensor sizes
+        inputs = tokenizer(
+            batch_seqs, return_tensors="pt", padding="max_length",
+            truncation=True, max_length=max_len
+        )
+        inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
+        
+        with torch.no_grad():
+            outputs = model(**inputs)
+        
+        # last_hidden_state: [Batch, max_len, Hidden_Dim]
+        hidden_states = outputs.last_hidden_state.cpu().numpy()
+        
+        # Compute actual lengths (sum of attention mask, minus 2 for <cls> and <eos>)
+        # But for BiLSTM we include all non-pad tokens, so just sum attention_mask
+        lengths = inputs['attention_mask'].sum(dim=1).cpu().numpy()
+        
+        all_embeddings.append(hidden_states)
+        all_lengths.append(lengths)
+    
+    return np.concatenate(all_embeddings, axis=0), np.concatenate(all_lengths, axis=0)
+
 def main():
     args = get_args()
     print(f"Using device: {DEVICE}")
@@ -124,13 +163,19 @@ def main():
     tokenizer = EsmTokenizer.from_pretrained(ESM_MODEL_NAME)
     model = EsmModel.from_pretrained(ESM_MODEL_NAME).to(DEVICE)
     
+    # Mean-pooled embeddings (for MLP baseline)
     esm_matrix = extract_esm_embeddings(sequences, tokenizer, model)
+    
+    # Full sequence embeddings (for BiLSTM)
+    esm_full, seq_lengths = extract_esm_embeddings_full(sequences, tokenizer, model)
 
     # 4. Save to HDF5
     print(f"Saving features to {args.output_h5}...")
     with h5py.File(args.output_h5, 'w') as hf:
         # Save Features
-        hf.create_dataset('esm_embeddings', data=esm_matrix)
+        hf.create_dataset('esm_embeddings', data=esm_matrix)          # [N, hidden_dim] mean-pooled
+        hf.create_dataset('esm_full', data=esm_full)                  # [N, max_len, hidden_dim] full
+        hf.create_dataset('seq_lengths', data=seq_lengths)            # [N] actual lengths
         hf.create_dataset('qsar_features', data=qsar_matrix)
         
         # Save Labels
@@ -140,6 +185,7 @@ def main():
         hf.attrs['n_samples'] = len(sequences)
         hf.attrs['esm_dim'] = esm_matrix.shape[1]
         hf.attrs['qsar_dim'] = qsar_matrix.shape[1]
+        hf.attrs['max_seq_len'] = esm_full.shape[1]
         
     print("Done! Data ready for training.")
 
