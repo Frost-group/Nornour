@@ -152,7 +152,14 @@ for entry in "${DATASETS[@]}"; do
     # MLP head input: 2×lstm_hidden + QSAR ≈ 256+267 ≈ 523 (with QSAR)
     #                 2×lstm_hidden ≈ 256 (pure)
     # -------------------------------------------------------------------------
-    
+
+    # Baby BiLSTM
+    run_experiment "${ds}_esm-bilstm_and_qsar" \
+        --h5_file "$h5" --model bilstm \
+        --lstm_hidden 16 --lstm_layers 1 --mlp_hidden 128 64 \
+        --dropout 0.5 --lr 1e-3
+ 
+
     # BiLSTM + QSAR (wider head)
     run_experiment "${ds}_esm-bilstm_and_qsar" \
         --h5_file "$h5" --model bilstm \

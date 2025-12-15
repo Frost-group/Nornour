@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """
 train_mlp.py - Train an MLP to predict peptide MIC from ESM + QSAR features.
-
 Evaluation includes drug-discovery-relevant metrics: Enrichment Factor, Spearman ρ, BEDROC.
-
-Usage:
-    python train_mlp.py --h5_file peptides_featurised.h5 --epochs 150 --hidden_dims 64 32 16
 """
 
 import argparse
@@ -59,9 +55,9 @@ def get_args():
     parser.add_argument('--lstm_layers', type=int, default=1,
                         help="Number of BiLSTM layers")
     parser.add_argument('--mlp_hidden', type=int, nargs='+', default=[128, 64],
-                        help="MLP head hidden dimensions for BiLSTM model")
+                        help="Readout MLP head hidden dimensions for BiLSTM model, 128 64")
     parser.add_argument('--pure_bilstm', action='store_true',
-                        help="Pure BiLSTM without QSAR features (ESM sequence only)")
+                        help="Pure BiLSTM without QSAR features into MLP (ESM sequence only into BiLSTM, MLP readout on BiLSTM features only))")
     
     # Training
     parser.add_argument('--epochs', type=int, default=40,
@@ -72,6 +68,9 @@ def get_args():
                         help="Learning rate")
     parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help="L2 regularisation (weight decay)")
+    parser.add_argument('--scheduler', type=str, default='none',
+                        choices=['none', 'plateau', 'cosine'],
+                        help="LR scheduler: 'none', 'plateau' (ReduceLROnPlateau), or 'cosine'")
     
     # Data splits
     parser.add_argument('--val_frac', type=float, default=0.15,
@@ -350,6 +349,92 @@ def evaluate_bilstm(model, loader, device):
     return np.vstack(all_preds).flatten(), np.vstack(all_targets).flatten()
 
 # ============================================================================
+# VISUALIZATION
+# ============================================================================
+
+def plot_results(args, y, metrics, train_losses, val_losses, val_spearman,
+                 train_preds, train_targets, test_preds, test_targets):
+    """Generate and save training plots."""
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    
+    # Loss curves
+    ax1 = axes[0]
+    ax1.plot(train_losses, 'b-', alpha=0.8, label='Train')
+    ax1.plot(val_losses, 'r-', alpha=0.8, label='Val')
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('MSE Loss')
+    ax1.set_yscale('log')
+    ax1.legend(loc='upper right')
+    ax1b = ax1.twinx()
+    ax1b.plot(val_spearman, 'green', alpha=0.6, label='Val ρ')
+    ax1b.set_ylabel('Spearman ρ', color='green')
+    ax1b.tick_params(axis='y', labelcolor='green')
+    ax1b.set_ylim(0, 1)
+    ax1.set_title('Training Progress')
+    
+    # Scatter plot (train / test)
+    ax2 = axes[1]
+    ax2.scatter(train_targets, train_preds, 
+                alpha=0.25, edgecolors='none', s=5, c='blue', label='Train', marker='x')
+    ax2.scatter(test_targets, test_preds, 
+                alpha=0.7, edgecolors='none', s=10, c='orange', label='Test', marker='o')
+    pad = 0.1 * (y.max() - y.min())
+    lims = [y.min() - pad, y.max() + pad]
+    ax2.plot(lims, lims, 'k--', alpha=0.6, linewidth=1, label='Ideal')
+    ax2.set_xlim(lims)
+    ax2.set_ylim(lims)
+    ax2.set_xlabel('Actual log₁₀(MIC)')
+    ax2.set_ylabel('Predicted log₁₀(MIC)')
+    ax2.set_title(f'Test: R² = {metrics["R²"]:.3f}, ρ = {metrics["Spearman ρ"]:.3f}')
+    ax2.legend(loc='upper left', fontsize=8, framealpha=0.9)
+    ax2.set_aspect('equal', 'box')
+    
+    # Enrichment curve
+    ax3 = axes[2]
+    potent_thresh = np.percentile(test_targets, 10)
+    is_potent = test_targets <= potent_thresh
+    n_potent = is_potent.sum()
+    n = len(test_preds)
+    sort_idx = np.argsort(test_preds)
+    cumulative_potent = np.cumsum(is_potent[sort_idx])
+    x_pct = np.arange(1, n + 1) / n * 100
+    
+    ax3.plot(x_pct, cumulative_potent, 'b-', linewidth=2, label='Model')
+    ax3.plot(x_pct, np.minimum(np.arange(1, n + 1), n_potent), 'g--', linewidth=1.5, alpha=0.7, label='Perfect')
+    ax3.plot(x_pct, np.arange(1, n + 1) * (n_potent / n), 'k:', alpha=0.5, label='Random')
+    
+    for thresh, color in [(1, 'purple'), (5, 'red'), (10, 'orange'), (20, 'brown')]:
+        k = max(1, int(n * thresh / 100))
+        hits = cumulative_potent[k - 1]
+        ef_val = metrics[f'EF@{thresh}%']
+        ax3.scatter([thresh], [hits], color=color, s=60, zorder=5, edgecolors='white', linewidths=1.5)
+        ax3.annotate(f'EF@{thresh}%={ef_val:.1f}x', xy=(thresh, hits), xytext=(thresh + 2, hits + 1),
+                    fontsize=8, color=color)
+    
+    ax3.set_xlabel('% of Peptides Screened')
+    ax3.set_ylabel('Cumulative Potent Peptides Found')
+    ax3.set_title(f'Enrichment Curve (BEDROC={metrics["BEDROC"]:.3f})')
+    ax3.legend(loc='lower right', fontsize=9)
+    ax3.set_xlim(0, 100)
+    ax3.set_ylim(0, n_potent * 1.1)
+    
+    plt.tight_layout()
+    
+    # Compact run info footer
+    if args.model == 'mlp':
+        model_info = f"MLP {args.hidden_dims}"
+    else:
+        model_info = f"BiLSTM h={args.lstm_hidden}×{args.lstm_layers}" + (" +QSAR" if not args.pure_bilstm else "")
+    info_str = (f"{datetime.now():%Y-%m-%d %H:%M} | {args.h5_file} | {model_info} | "
+                f"lr={args.lr} drop={args.dropout} | N={len(y)}")
+    fig.text(0.5, 0.01, info_str, ha='center', fontsize=7, color='gray', family='monospace')
+    
+    plt.subplots_adjust(bottom=0.12)
+    plt.savefig(args.plot_path, dpi=150)
+    print(f"\n    Plot saved to: {args.plot_path}")
+    plt.show()
+
+# ============================================================================
 # MAIN
 # ============================================================================
 
@@ -463,6 +548,13 @@ def main():
     criterion = nn.MSELoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     
+    # LR scheduler
+    scheduler = None
+    if args.scheduler == 'plateau':
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
+    elif args.scheduler == 'cosine':
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+    
     # 5. Training loop
     print(f"\n[5] Training for {args.epochs} epochs")
     train_losses, val_losses, val_spearman = [], [], []
@@ -481,8 +573,16 @@ def main():
         rho, _ = spearmanr(val_targets, val_preds)
         val_spearman.append(rho)
         
-#        if epoch % 10 == 0 or epoch == 1:
-        print(f"    Epoch {epoch:3d}: train={train_loss:.4f}, val={val_loss:.4f}, ρ={rho:.3f}")
+        # Step scheduler
+        if scheduler:
+            if args.scheduler == 'plateau':
+                scheduler.step(val_loss)
+            else:
+                scheduler.step()
+        
+        val_mae = np.abs(val_preds - val_targets).mean()
+        lr = optimizer.param_groups[0]['lr']
+        print(f"    Epoch {epoch:3d}: train={train_loss:.4f}, val={val_loss:.4f}, ρ={rho:.3f}, MAE={val_mae:.3f}, lr={lr:.2e}")
     
     # 6. Final evaluation
     print(f"\n[6] Final Evaluation on Test Set")
@@ -509,8 +609,7 @@ def main():
     print(f"    Precision@10%: {metrics['Precision@10%']:.2%}")
     print(f"    Recall@10%: {metrics['Recall@10%']:.2%}")
     print(f"    (Found {metrics['hits@10%']:.0f} of {metrics['n_potent']:.0f} potent peptides in top 10%)")
- 
-    
+
     # 7. Save model
     if args.save_model:
         save_dict = {
@@ -528,92 +627,11 @@ def main():
     
     # 8. Visualisation
     if not args.no_plot:
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-        
-        # Loss curves
-        ax1 = axes[0]
-        ax1.plot(train_losses, 'b-', alpha=0.8, label='Train')
-        ax1.plot(val_losses, 'r-', alpha=0.8, label='Val')
-        ax1.set_xlabel('Epoch')
-        ax1.set_ylabel('MSE Loss')
-        ax1.set_yscale('log')
-        ax1.legend(loc='upper right')
-        ax1b = ax1.twinx()
-        ax1b.plot(val_spearman, 'green', alpha=0.6, label='Val ρ')
-        ax1b.set_ylabel('Spearman ρ', color='green')
-        ax1b.tick_params(axis='y', labelcolor='green')
-        ax1b.set_ylim(0, 1)
-        ax1.set_title('Training Progress')
-        
-        # Scatter plot (train / val / test)
-        ax2 = axes[1]
-        ax2.scatter(train_targets, train_preds, 
-                    alpha=0.25, edgecolors='none', s=5, c='blue', label='Train',
-                    marker='x' )
-#        ax2.scatter(val_targets, val_preds, 
-#                    alpha=0.5, edgecolors='none', s=10, c='#ff7f0e', label='Val',
-#                    marker='o' )
-        ax2.scatter(test_targets, test_preds, 
-                    alpha=0.7, edgecolors='none', s=10, c='orange', label='Test',
-                    marker='o' )
-        # Consistent axis limits based on full target range
-        pad = 0.1 * (y.max() - y.min())
-        lims = [y.min() - pad, y.max() + pad]
-        ax2.plot(lims, lims, 'k--', alpha=0.6, linewidth=1, label='Ideal')
-        ax2.set_xlim(lims)
-        ax2.set_ylim(lims)
-        ax2.set_xlabel('Actual log₁₀(MIC)')
-        ax2.set_ylabel('Predicted log₁₀(MIC)')
-        ax2.set_title(f'Test: R² = {metrics["R²"]:.3f}, ρ = {metrics["Spearman ρ"]:.3f}')
-        ax2.legend(loc='upper left', fontsize=8, framealpha=0.9)
-        ax2.set_aspect('equal', 'box')
-        
-        # Enrichment curve
-        ax3 = axes[2]
-        potent_thresh = np.percentile(test_targets, 10)
-        is_potent = test_targets <= potent_thresh
-        n_potent = is_potent.sum()
-        n = len(test_preds)
-        sort_idx = np.argsort(test_preds)
-        cumulative_potent = np.cumsum(is_potent[sort_idx])
-        x_pct = np.arange(1, n + 1) / n * 100
-        
-        ax3.plot(x_pct, cumulative_potent, 'b-', linewidth=2, label='Model')
-        ax3.plot(x_pct, np.minimum(np.arange(1, n + 1), n_potent), 'g--', linewidth=1.5, alpha=0.7, label='Perfect')
-        ax3.plot(x_pct, np.arange(1, n + 1) * (n_potent / n), 'k:', alpha=0.5, label='Random')
-        
-        for thresh, color in [(1, 'purple'), (5, 'red'), (10, 'orange'), (20, 'brown')]:
-            k = max(1, int(n * thresh / 100))
-            hits = cumulative_potent[k - 1]
-            ef_val = metrics[f'EF@{thresh}%']
-            ax3.scatter([thresh], [hits], color=color, s=60, zorder=5, edgecolors='white', linewidths=1.5)
-            ax3.annotate(f'EF@{thresh}%={ef_val:.1f}x', xy=(thresh, hits), xytext=(thresh + 2, hits + 1),
-                        fontsize=8, color=color)
-        
-        ax3.set_xlabel('% of Peptides Screened')
-        ax3.set_ylabel('Cumulative Potent Peptides Found')
-        ax3.set_title(f'Enrichment Curve (BEDROC={metrics["BEDROC"]:.3f})')
-        ax3.legend(loc='lower right', fontsize=9)
-        ax3.set_xlim(0, 100)
-        ax3.set_ylim(0, n_potent * 1.1)
-        
-        plt.tight_layout()
-        
-        # Compact run info footer
-        if args.model == 'mlp':
-            model_info = f"MLP {args.hidden_dims}"
-        else:
-            model_info = f"BiLSTM h={args.lstm_hidden}×{args.lstm_layers}" + (" +QSAR" if not args.pure_bilstm else "")
-        info_str = (f"{datetime.now():%Y-%m-%d %H:%M} | {args.h5_file} | {model_info} | "
-                    f"lr={args.lr} drop={args.dropout} | N={len(y)}")
-        fig.text(0.5, 0.01, info_str, ha='center', fontsize=7, color='gray', family='monospace')
-        
-        plt.subplots_adjust(bottom=0.12)
-        plt.savefig(args.plot_path, dpi=150)
-        print(f"\n    Plot saved to: {args.plot_path}")
-        plt.show()
+        plot_results(args, y, metrics, train_losses, val_losses, val_spearman,
+                     train_preds, train_targets, test_preds, test_targets)
     
     print("\nDone!")
 
 if __name__ == "__main__":
     main()
+
