@@ -15,13 +15,6 @@ mkdir -p "$RESULTS_DIR"
 # Prevent plt.show() from blocking
 export MPLBACKEND=Agg
 
-# Datasets: "h5_file:short_name"
-DATASETS=(
-    "peptides_featurised.h5:full"
-    "peptides_coli_featurised.h5:coli"
-    "peptides_gramnegative_featurised.h5:gramneg"
-)
-
 # Common training params
 EPOCHS=40
 BATCH_SIZE=64
@@ -60,9 +53,14 @@ echo "=== Model Sweep ==="
 echo "Results: $RESULTS_DIR/"
 echo ""
 
-for entry in "${DATASETS[@]}"; do
-    h5="${entry%%:*}"
-    ds="${entry##*:}"
+for h5 in peptides_gramnegative_featurised.h5 peptides_coli_featurised.h5 #peptides_featurised.h5 peptides_coli_featurised.h5
+do
+    case "$h5" in
+        peptides_featurised.h5) ds="full" ;;
+        peptides_coli_featurised.h5) ds="coli" ;;
+        peptides_gramnegative_featurised.h5) ds="gramneg" ;;
+        *) ds="unknown" ;;
+    esac
     
     [[ ! -f "$h5" ]] && { echo "Skipping $h5 (not found)"; continue; }
     
@@ -74,6 +72,7 @@ for entry in "${DATASETS[@]}"; do
     # Rule of thumb: first layer ≤ 4x compression
     # -------------------------------------------------------------------------
     
+    # Core baselines
     # MLP: ESM+QSAR (new default - ~4x compression)
     run_experiment "${ds}_mlp_esm_qsar" \
         --h5_file "$h5" --model mlp --feature_type both \
@@ -88,86 +87,66 @@ for entry in "${DATASETS[@]}"; do
     run_experiment "${ds}_mlp_qsar" \
         --h5_file "$h5" --model mlp --feature_type qsar \
         --hidden_dims 128 64 --dropout 0.3 --lr 1e-3
-    
-    # --- Architecture variations (ESM+QSAR) ---
-    
-    # Wider first layer (~2x compression)
-    run_experiment "${ds}_mlp_esm_qsar_wide" \
+
+    # --- High-performance MLP variants (EF/BEDROC-focused) ---
+
+    # Smaller ESM+QSAR head
+    run_experiment "${ds}_mlp_esm_qsar_small" \
         --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 512 256 64 --dropout 0.3 --lr 1e-3
-    
-    # Deeper pyramid
-    run_experiment "${ds}_mlp_esm_qsar_deep" \
+        --hidden_dims 128 64 --dropout 0.3 --lr 1e-3
+
+    # Smaller ESM+QSAR head with stronger dropout
+    run_experiment "${ds}_mlp_esm_qsar_small_highdrop" \
         --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 256 128 64 32 --dropout 0.3 --lr 1e-3
+        --hidden_dims 128 64 --dropout 0.5 --lr 1e-3
+
+    # ESM-only, slightly smaller, higher dropout
+    run_experiment "${ds}_mlp_esm_highdrop" \
+        --h5_file "$h5" --model mlp --feature_type esm \
+        --hidden_dims 256 128 --dropout 0.4 --lr 1e-3
+
+    # ESM-only, higher dropout + lower LR
+    run_experiment "${ds}_mlp_esm_highdrop_lowlr" \
+        --h5_file "$h5" --model mlp --feature_type esm \
+        --hidden_dims 256 128 --dropout 0.4 --lr 5e-4
+
+    # ESM-only, higher dropout + lower LR + stronger weight decay
+    run_experiment "${ds}_mlp_esm_highdrop_lowlr_wd" \
+        --h5_file "$h5" --model mlp --feature_type esm \
+        --hidden_dims 256 128 --dropout 0.4 --lr 5e-4 --weight_decay 1e-3
     
-    # Fat-then-thin
-    run_experiment "${ds}_mlp_esm_qsar_fat" \
-        --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 512 128 --dropout 0.3 --lr 1e-3
-    
-    # Single wide hidden layer
-    run_experiment "${ds}_mlp_esm_qsar_shallow" \
-        --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 256 --dropout 0.3 --lr 1e-3
-    
-    # Old narrow baseline (for comparison)
-    run_experiment "${ds}_mlp_esm_qsar_narrow" \
-        --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 64 32 16 --dropout 0.3 --lr 1e-3
-    
-    # --- Activation function ---
-    
-    run_experiment "${ds}_mlp_esm_qsar_silu" \
-        --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 256 128 64 --dropout 0.3 --lr 1e-3 --activation silu
-    
-    run_experiment "${ds}_mlp_esm_qsar_relu" \
-        --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 256 128 64 --dropout 0.3 --lr 1e-3 --activation relu
-    
-    # --- Regularisation sensitivity ---
-    
-    run_experiment "${ds}_mlp_esm_qsar_lowdrop" \
-        --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 256 128 64 --dropout 0.1 --lr 1e-3
-    
-    run_experiment "${ds}_mlp_esm_qsar_highdrop" \
-        --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 256 128 64 --dropout 0.5 --lr 1e-3
-    
-    # --- Learning rate sensitivity ---
-    
-    run_experiment "${ds}_mlp_esm_qsar_lowlr" \
-        --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 256 128 64 --dropout 0.3 --lr 1e-4
-    
-    run_experiment "${ds}_mlp_esm_qsar_highlr" \
-        --h5_file "$h5" --model mlp --feature_type both \
-        --hidden_dims 256 128 64 --dropout 0.3 --lr 5e-3
-    
+
+    # -------------------------------------------------------------------------
+    # Attention-pooling models (ESM full sequence + QSAR)
+    # Much lighter than BiLSTM; good for ~1.5k samples
+    # -------------------------------------------------------------------------
+
+    # Best-performing attention configuration (from previous sweep)
+    run_experiment "${ds}_attn_esm_qsar_highdrop" \
+        --h5_file "$h5" --model attn \
+        --mlp_hidden 128 64 --dropout 0.5 --lr 1e-3
+
 
     # -------------------------------------------------------------------------
     # BiLSTM models - SLOW AS MOLASSES ON MY LITTLE CPU
     # MLP head input: 2×lstm_hidden + QSAR ≈ 256+267 ≈ 523 (with QSAR)
     #                 2×lstm_hidden ≈ 256 (pure)
     # -------------------------------------------------------------------------
-
-    # Baby BiLSTM
-    run_experiment "${ds}_esm-bilstm_and_qsar" \
+    
+    # Baby BiLSTM (small capacity, heavy dropout)
+    run_experiment "${ds}_bilstm_and_qsar_small" \
         --h5_file "$h5" --model bilstm \
         --lstm_hidden 16 --lstm_layers 1 --mlp_hidden 128 64 \
         --dropout 0.5 --lr 1e-3
- 
-
-    # BiLSTM + QSAR (wider head)
-    run_experiment "${ds}_esm-bilstm_and_qsar" \
+    
+    # Best-performing BiLSTM + QSAR configuration (from previous sweep)
+    run_experiment "${ds}_bilstm_and_qsar" \
         --h5_file "$h5" --model bilstm \
         --lstm_hidden 128 --lstm_layers 1 --mlp_hidden 128 64 \
         --dropout 0.3 --lr 1e-3
-    
+
     # Pure BiLSTM (no QSAR)
-    run_experiment "${ds}_esm-bilstm_pure" \
+    run_experiment "${ds}_bilstm_pure" \
         --h5_file "$h5" --model bilstm --pure_bilstm \
         --lstm_hidden 128 --lstm_layers 1 --mlp_hidden 128 64 \
         --dropout 0.3 --lr 1e-3
