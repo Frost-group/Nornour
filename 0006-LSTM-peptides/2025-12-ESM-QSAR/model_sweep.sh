@@ -36,7 +36,7 @@ run_experiment() {
     
     echo -n "  [run]  $name ... "
     
-    python train_mlp.py $args \
+    python train_mic.py $args \
         --epochs $EPOCHS \
         --batch_size $BATCH_SIZE \
         --seed $SEED \
