@@ -37,8 +37,8 @@ def get_args():
     
     # Model type
     parser.add_argument('--model', type=str, default='mlp',
-                        choices=['mlp', 'bilstm'],
-                        help="Model type: 'mlp' (mean-pooled ESM) or 'bilstm' (full ESM sequence)")
+                        choices=['mlp', 'bilstm', 'attn'],
+                        help="Model type: 'mlp' (mean-pooled ESM), 'bilstm' (full ESM sequence), or 'attn' (attention over full ESM sequence)")
     
     # Architecture (MLP)
     parser.add_argument('--hidden_dims', type=int, nargs='+', default=[256, 128, 64],
@@ -215,6 +215,70 @@ class BiLSTM_QSAR(nn.Module):
         
         return self.mlp(combined)
 
+
+class AttentionPool(nn.Module):
+    """Attention pooling over sequence dimension."""
+    def __init__(self, dim: int):
+        super().__init__()
+        self.attn = nn.Linear(dim, 1)
+
+    def forward(self, x, lengths):
+        """
+        Args:
+            x: [Batch, SeqLen, Dim]
+            lengths: [Batch]
+        """
+        B, T, _ = x.size()
+        device = x.device
+        lengths = lengths.to(device)
+        scores = self.attn(x).squeeze(-1)  # [B, T]
+        mask = torch.arange(T, device=device).unsqueeze(0) >= lengths.unsqueeze(1)
+        scores = scores.masked_fill(mask, -1e9)
+        weights = torch.softmax(scores, dim=-1)  # [B, T]
+        pooled = torch.bmm(weights.unsqueeze(1), x).squeeze(1)  # [B, Dim]
+        return pooled
+
+
+class AttnPool_QSAR(nn.Module):
+    """
+    Attention pooling over full ESM embeddings, optionally combined with QSAR features.
+    """
+    def __init__(self, esm_dim: int, qsar_dim: int = 0,
+                 mlp_hidden: list[int] = [64, 32],
+                 dropout: float = 0.3, activation: str = 'gelu'):
+        super().__init__()
+        self.use_qsar = qsar_dim > 0
+
+        self.attn_pool = AttentionPool(esm_dim)
+
+        combined_dim = esm_dim + (qsar_dim if self.use_qsar else 0)
+
+        layers = []
+        prev_dim = combined_dim
+        for h_dim in mlp_hidden:
+            layers.extend([
+                nn.Linear(prev_dim, h_dim),
+                get_activation(activation),
+                nn.Dropout(dropout),
+            ])
+            prev_dim = h_dim
+        layers.append(nn.Linear(prev_dim, 1))
+        self.mlp = nn.Sequential(*layers)
+
+    def forward(self, esm_embeddings, qsar_features, lengths):
+        """
+        Args:
+            esm_embeddings: [Batch, SeqLen, ESM_dim]
+            qsar_features: [Batch, QSAR_dim]
+            lengths: [Batch]
+        """
+        pooled = self.attn_pool(esm_embeddings, lengths)
+        if self.use_qsar:
+            combined = torch.cat([pooled, qsar_features], dim=-1)
+        else:
+            combined = pooled
+        return self.mlp(combined)
+
 # ============================================================================
 # EVALUATION METRICS
 # ============================================================================
@@ -348,6 +412,38 @@ def evaluate_bilstm(model, loader, device):
         all_targets.append(y_batch.numpy())
     return np.vstack(all_preds).flatten(), np.vstack(all_targets).flatten()
 
+
+def train_epoch_attn(model, loader, criterion, optimizer, device):
+    """Single training epoch for attention pooling model."""
+    model.train()
+    total_loss = 0.0
+    for esm_batch, qsar_batch, len_batch, y_batch in loader:
+        esm_batch = esm_batch.to(device)
+        qsar_batch = qsar_batch.to(device)
+        y_batch = y_batch.to(device)
+
+        optimizer.zero_grad()
+        pred = model(esm_batch, qsar_batch, len_batch)
+        loss = criterion(pred, y_batch)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item() * len(y_batch)
+    return total_loss / len(loader.dataset)
+
+
+@torch.no_grad()
+def evaluate_attn(model, loader, device):
+    """Evaluate attention pooling model. Returns predictions and targets."""
+    model.eval()
+    all_preds, all_targets = [], []
+    for esm_batch, qsar_batch, len_batch, y_batch in loader:
+        esm_batch = esm_batch.to(device)
+        qsar_batch = qsar_batch.to(device)
+        pred = model(esm_batch, qsar_batch, len_batch)
+        all_preds.append(pred.cpu().numpy())
+        all_targets.append(y_batch.numpy())
+    return np.vstack(all_preds).flatten(), np.vstack(all_targets).flatten()
+
 # ============================================================================
 # VISUALIZATION
 # ============================================================================
@@ -423,8 +519,10 @@ def plot_results(args, y, metrics, train_losses, val_losses, val_spearman,
     # Compact run info footer
     if args.model == 'mlp':
         model_info = f"MLP {args.hidden_dims}"
-    else:
+    elif args.model == 'bilstm':
         model_info = f"BiLSTM h={args.lstm_hidden}×{args.lstm_layers}" + (" +QSAR" if not args.pure_bilstm else "")
+    else:
+        model_info = f"AttnPool {args.mlp_hidden}"
     info_str = (f"{datetime.now():%Y-%m-%d %H:%M} | {args.h5_file} | {model_info} | "
                 f"lr={args.lr} drop={args.dropout} | N={len(y)}")
     fig.text(0.5, 0.01, info_str, ha='center', fontsize=7, color='gray', family='monospace')
@@ -445,7 +543,14 @@ def main():
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}")
-    model_desc = args.model.upper() + (" (pure, no QSAR)" if args.model == 'bilstm' and args.pure_bilstm else "")
+    if args.model == 'bilstm' and args.pure_bilstm:
+        model_desc = "BILSTM (pure, no QSAR)"
+    elif args.model == 'bilstm':
+        model_desc = "BILSTM + QSAR"
+    elif args.model == 'attn':
+        model_desc = "ATTNPOOL + QSAR"
+    else:
+        model_desc = "MLP"
     print(f"Model type: {model_desc}")
     
     # 1. Load data
@@ -456,8 +561,8 @@ def main():
         log_mic = hf['log_mic'][:]
         print(f"    ESM (pooled): {esm_embeddings.shape}, QSAR: {qsar_features.shape}, Targets: {log_mic.shape}")
         
-        # Load full embeddings for BiLSTM mode
-        if args.model == 'bilstm':
+        # Load full embeddings for sequence models
+        if args.model in ('bilstm', 'attn'):
             esm_full = hf['esm_full'][:]
             seq_lengths = hf['seq_lengths'][:]
             print(f"    ESM (full): {esm_full.shape}, Lengths: {seq_lengths.shape}")
@@ -508,7 +613,7 @@ def main():
         val_loader = DataLoader(val_ds, batch_size=args.batch_size)
         test_loader = DataLoader(test_ds, batch_size=args.batch_size)
     else:
-        # BiLSTM datasets
+        # Sequence models (BiLSTM / Attention)
         train_ds = PeptideDatasetFull(esm_full[train_idx], qsar_normed[train_idx], 
                                        seq_lengths[train_idx], y[train_idx])
         val_ds = PeptideDatasetFull(esm_full[val_idx], qsar_normed[val_idx],
@@ -524,7 +629,7 @@ def main():
     if args.model == 'mlp':
         print(f"\n[4] Building MLP: {X.shape[1]} -> {args.hidden_dims} -> 1")
         model = MLP(X.shape[1], args.hidden_dims, args.dropout, args.activation).to(device)
-    else:
+    elif args.model == 'bilstm':
         esm_dim = esm_full.shape[2]
         qsar_dim = 0 if args.pure_bilstm else qsar_normed.shape[1]
         model_name = "BiLSTM (pure)" if args.pure_bilstm else "BiLSTM_QSAR"
@@ -540,6 +645,19 @@ def main():
             mlp_hidden=args.mlp_hidden,
             dropout=args.dropout,
             activation=args.activation
+        ).to(device)
+    else:
+        esm_dim = esm_full.shape[2]
+        qsar_dim = qsar_normed.shape[1]
+        print(f"\n[4] Building AttnPool_QSAR:")
+        print(f"    ESM dim: {esm_dim}, QSAR dim: {qsar_dim}")
+        print(f"    MLP head: {args.mlp_hidden} -> 1")
+        model = AttnPool_QSAR(
+            esm_dim=esm_dim,
+            qsar_dim=qsar_dim,
+            mlp_hidden=args.mlp_hidden,
+            dropout=args.dropout,
+            activation=args.activation,
         ).to(device)
     
     n_params = sum(p.numel() for p in model.parameters())
@@ -563,9 +681,12 @@ def main():
         if args.model == 'mlp':
             train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
             val_preds, val_targets = evaluate(model, val_loader, device)
-        else:
+        elif args.model == 'bilstm':
             train_loss = train_epoch_bilstm(model, train_loader, criterion, optimizer, device)
             val_preds, val_targets = evaluate_bilstm(model, val_loader, device)
+        else:
+            train_loss = train_epoch_attn(model, train_loader, criterion, optimizer, device)
+            val_preds, val_targets = evaluate_attn(model, val_loader, device)
         
         train_losses.append(train_loss)
         val_loss = ((val_preds - val_targets) ** 2).mean()
@@ -590,10 +711,14 @@ def main():
         train_preds, train_targets = evaluate(model, train_loader, device)
         val_preds, val_targets = evaluate(model, val_loader, device)
         test_preds, test_targets = evaluate(model, test_loader, device)
-    else:
+    elif args.model == 'bilstm':
         train_preds, train_targets = evaluate_bilstm(model, train_loader, device)
         val_preds, val_targets = evaluate_bilstm(model, val_loader, device)
         test_preds, test_targets = evaluate_bilstm(model, test_loader, device)
+    else:
+        train_preds, train_targets = evaluate_attn(model, train_loader, device)
+        val_preds, val_targets = evaluate_attn(model, val_loader, device)
+        test_preds, test_targets = evaluate_attn(model, test_loader, device)
     metrics = compute_metrics(test_targets, test_preds)
     
     print(f"\n    --- Regression Metrics ---")
