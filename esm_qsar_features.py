@@ -141,14 +141,21 @@ def main():
     n0 = len(df)
     
     # Filter to canonical amino acids only (no U, X, Z, O, J, B, lowercase, or special chars)
+    df['Sequence'] = (
+    df['Sequence']
+    .astype(str)
+    .str.strip()
+    .str.upper()
+    )
     canonical_aa = set('ACDEFGHIKLMNPQRSTVWY')
-    df = df[df['Sequence'].apply(lambda s: set(s).issubset(canonical_aa))]
+
+    mask = df['Sequence'].apply(lambda s: set(s).issubset(canonical_aa))
+    df = df[mask]
     
     n1=len(df)
     print("Start: ", n0)
     print(f"Dropped {n0-n1} sequences with non canonical amino-acids")
-    sequences = df['Sequence'].tolist()
-    
+    sequences= df['Sequence'].tolist()
 
     # Handle targets (MIC) - Log transform here for convenience
     mics = df['MIC'].astype(float).values
@@ -216,4 +223,4 @@ if __name__ == "__main__":
 #How to run
 #python esm_qsar_features.py \
   #--input_csv data/dramp_coli.csv \
-  #--output_h5 ecoli_peptides_featurised.h5embra
+  #--output_h5 ecoli_peptides_featurised.h5
