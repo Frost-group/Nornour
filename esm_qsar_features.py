@@ -141,12 +141,6 @@ def main():
     n0 = len(df)
     
     # Filter to canonical amino acids only (no U, X, Z, O, J, B, lowercase, or special chars)
-    df['Sequence'] = (
-    df['Sequence']
-    .astype(str)
-    .str.strip()
-    .str.upper()
-    )
     canonical_aa = set('ACDEFGHIKLMNPQRSTVWY')
 
     mask = df['Sequence'].apply(lambda s: set(s).issubset(canonical_aa))
@@ -155,7 +149,7 @@ def main():
     n1=len(df)
     print("Start: ", n0)
     print(f"Dropped {n0-n1} sequences with non canonical amino-acids")
-    sequences= df['Sequence'].tolist()
+    sequences= df['Sequence'].str.upper().tolist()
 
     # Handle targets (MIC) - Log transform here for convenience
     mics = df['MIC'].astype(float).values
