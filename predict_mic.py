@@ -8,7 +8,7 @@ import argparse
 from tqdm import tqdm
 from typing import Tuple 
 
-from train_mic import MLP, BiLSTM_QSAR
+from train_mic import MLP, BiLSTM_QSAR, BiLSTM_SEQ, encode_seq
 
 """
 predict_mic.py
@@ -17,10 +17,29 @@ Inference script for models:
 - MLP (feature_type: "esm" | "qsar" | "both")
 - BiLSTM (uses esm_full + qsar + lengths)
 - BiLSTM_PURE (uses esm_full + lengths only)
+- BiLSTM_SEQ (sequences)
+- BILSTM_SEQ + QSAR
 
 - MIC in (µg/mL)
 
 """
+def get_args():
+    p = argparse.ArgumentParser(
+        description="Inference for MIC prediction",
+    )
+
+    p.add_argument("--h5_file", required=True, help="Input H5 with esm_full/qsar_features/seq_lengths/sequences.")
+    p.add_argument("--ckpt_path", required=True, help="Path to saved model checkpoint (.pt).")
+    p.add_argument("--out_csv", required=True, help="Output CSV path.")
+    p.add_argument("--batch_size", type=int, default=128, help="Batch size for inference.")
+    p.add_argument("--device", default=None, help='Device override ("cpu" or "cuda"). Default auto.')
+    p.add_argument('--model', type=str, default='mlp',
+                        choices=['mlp', 'bilstm', 'bilstm_seq'],
+                        help="Model type: 'mlp' (mean-pooled ESM), 'bilstm' (full ESM sequence), 'bilstm (sequence model)")
+    p.add_argument('--pure_bilstm', action='store_true',
+                        help="Pure BiLSTM without QSAR features")
+
+    return p.parse_args()
 #1. Load sequences
 
 def load_h5_data(h5file: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -167,7 +186,6 @@ def build_bilstm_qsar(ckpt: dict, esm_full_dim: int, qsar_dim: int, device: str 
 
     return model
 
-
 def build_bilstm_pure(ckpt: dict, esm_full_dim:int, device: str | torch.device) -> BiLSTM_QSAR:
     args = ckpt["args"]
     required = ["lstm_hidden", "lstm_layers", "mlp_hidden", "dropout", "activation"]
@@ -211,23 +229,107 @@ def build_bilstm_pure(ckpt: dict, esm_full_dim:int, device: str | torch.device) 
 
     return model
 
+def build_bilstm_seq(ckpt: dict, device: str | torch.device) -> BiLSTM_SEQ:
+    args = ckpt["args"]
+    required = ["embed_dim" "lstm_hidden", "lstm_layers", "mlp_hidden", "dropout", "activation"]
+    missing = [k for k in required if k not in args]
+    if missing:
+        raise KeyError(f"Checkpoint args missing keys required for BiLSTM_PURE: {missing}")
+    
+    aa_vocab = ckpt["aa_vocab"]  
+    vocab_size=len(aa_vocab) 
+
+    print("\n" + "="*60)
+    print("STEP 3: Building BiLSTM Seq Model (No QSAR)")
+    print("="*60)
+
+    with tqdm(total=3, desc="Building model", unit="step") as pbar:
+        pbar.set_description("Creating architecture")
+        model = BiLSTM_SEQ(
+            vocab_size=vocab_size,
+            embed_dim=int(args["embed_dim"]),
+            qsar_dim=0,
+            lstm_hidden=int(args["lstm_hidden"]),
+            lstm_layers=int(args["lstm_layers"]),
+            mlp_hidden=args["mlp_hidden"],
+            dropout=float(args["dropout"]),
+            activation=args["activation"]
+        ).to(device)
+
+        pbar.update(1)
+        
+        pbar.set_description("Loading weights")
+        model.load_state_dict(ckpt["model_state_dict"])
+        pbar.update(1)
+        
+        pbar.set_description("Setting eval mode")
+        model.eval()
+        pbar.update(1)
+    
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f" BiLSTM Seq model built")
+    print(f"  - Embedding Dims: {args['embed_dim']}")
+    print(f"  - QSAR dimension: 0 (no QSAR)")
+    print(f"  - LSTM hidden: {args['lstm_hidden']} × {args['lstm_layers']} layers")
+    print(f"  - MLP head: {args['mlp_hidden']}")
+    print(f"  - Total parameters: {n_params:,}")
+
+    return model
+
+def build_bilstm_seq_qsar(ckpt: dict, qsar_dim: int, device: str | torch.device) -> BiLSTM_SEQ:
+    args = ckpt["args"]
+    required = ["embed_dim" "lstm_hidden", "lstm_layers", "mlp_hidden", "dropout", "activation"]
+    missing = [k for k in required if k not in args]
+    if missing:
+        raise KeyError(f"Checkpoint args missing keys required for BiLSTM_PURE: {missing}")
+    
+    aa_vocab = ckpt["aa_vocab"]  
+    vocab_size=len(aa_vocab) 
+
+    print("\n" + "="*60)
+    print("STEP 3: Building BiLSTM Seq Model (No QSAR)")
+    print("="*60)
+
+    with tqdm(total=3, desc="Building model", unit="step") as pbar:
+        pbar.set_description("Creating architecture")
+        model = BiLSTM_SEQ(
+            vocab_size=vocab_size,
+            embed_dim=int(args["embed_dim"]),
+            qsar_dim=qsar_dim,
+            lstm_hidden=int(args["lstm_hidden"]),
+            lstm_layers=int(args["lstm_layers"]),
+            mlp_hidden=args["mlp_hidden"],
+            dropout=float(args["dropout"]),
+            activation=args["activation"]
+        ).to(device)
+
+        pbar.update(1)
+        
+        pbar.set_description("Loading weights")
+        model.load_state_dict(ckpt["model_state_dict"])
+        pbar.update(1)
+        
+        pbar.set_description("Setting eval mode")
+        model.eval()
+        pbar.update(1)
+    
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f" BiLSTM Seq model built")
+    print(f"  - Embedding Dims: {args['embed_dim']}")
+    print(f"  - QSAR dimension: {qsar_dim}")
+    print(f"  - LSTM hidden: {args['lstm_hidden']} × {args['lstm_layers']} layers")
+    print(f"  - MLP head: {args['mlp_hidden']}")
+    print(f"  - Total parameters: {n_params:,}")
+
+    return model
+   
 #4. Load Features
-def load_mlp_features(h5file: str, ckpt: dict) -> np.ndarray:
+def load_mlp_features(esm, qsar, ckpt) -> np.ndarray:
     args = ckpt["args"]
     ftype = args["feature_type"]
 
-    with tqdm(total=3, desc="Loading features", unit="step") as pbar:
-        # Load from H5
-        pbar.set_description("Reading H5 file")
-        with h5py.File(h5file, "r") as f:
-            if ftype in ("esm", "both") and "esm_embeddings" not in f:
-                raise KeyError('H5 missing "esm_embeddings" required for MLP (esm/both).')
-            if ftype in ("qsar", "both") and "qsar_features" not in f:
-                raise KeyError('H5 missing "qsar_features" required for MLP (qsar/both).')
-
-            esm = f["esm_embeddings"][:] if ftype in ("esm", "both") else None
-            qsar = f["qsar_features"][:] if ftype in ("qsar", "both") else None
-        pbar.update(1)
+    esm = esm if ftype in ("esm", "both") else None
+    qsar = qsar if ftype in ("qsar", "both") else None
 
     print("\nNormalising Features...")    
     #Normalize features
@@ -290,6 +392,30 @@ def load_bilstm_qsar_features(h5file: str, ckpt: dict) -> Tuple[np.ndarray, np.n
 def load_bilstm_pure_features(h5file: str) -> Tuple[np.ndarray, np.ndarray]:
     return load_bilstm_common(h5file)
 
+def load_bilstm_seq_features(h5file: str, ckpt: dict) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    aa_vocab = ckpt["aa_vocab"]
+
+    with tqdm(total=2, desc="Loading BiLSTM Seq data", unit="dataset") as pbar:
+        with h5py.File(h5file, "r") as f:
+            if "sequences" not in f:
+                raise KeyError('H5 missing "sequences" required for BiLSTM inference.')
+            if "seq_lengths" not in f:
+                raise KeyError('H5 missing "seq_lengths" required for BiLSTM inference.')
+
+            pbar.set_description("Loading ESM sequences")
+            sequences = f["sequences"][:].astype(str)
+            pbar.update(1)
+
+            pbar.set_description("Loading seqeunce lengths")
+            lengths = f["seq_lengths"][:]
+            pbar.update(1)
+
+
+    print(f"✓ BiLSTM Seq data loaded")
+    print(f"  - Sequences: {sequences.shape}")
+    print(f"  - Sequence lengths: {lengths.shape}")
+
+    return sequences, lengths.astype(np.int64), aa_vocab
 
 #5. Prediction using saved model
 @torch.no_grad()
@@ -312,7 +438,6 @@ def predict_mlp(model: MLP, X: np.ndarray, device: str | torch.device, batch_siz
 
     print(f" Predictions complete for {N} peptides")
     return preds
-
 
 @torch.no_grad()
 def predict_bilstm_qsar(model: BiLSTM_QSAR, esm_full: np.ndarray, qsar: np.ndarray, lengths: np.ndarray,
@@ -342,7 +467,6 @@ def predict_bilstm_qsar(model: BiLSTM_QSAR, esm_full: np.ndarray, qsar: np.ndarr
     print(f" Predictions complete for {N} peptides")
     return preds
 
-
 @torch.no_grad()
 def predict_bilstm_pure(model: BiLSTM_QSAR, esm_full: np.ndarray, lengths: np.ndarray,
                         device: str | torch.device, batch_size: int) -> np.ndarray:
@@ -365,28 +489,59 @@ def predict_bilstm_pure(model: BiLSTM_QSAR, esm_full: np.ndarray, lengths: np.nd
     print(f" Predictions complete for {N} peptides")
     return preds
 
+@torch.no_grad()
+def predict_bilstm_seq(model: BiLSTM_SEQ, encoded_seq: np.ndarray, lengths: np.ndarray,
+                        device: str | torch.device, batch_size: int) -> np.ndarray:
+    N = encoded_seq.shape[0]
+    preds = np.zeros((N,), dtype=np.float32)
+
+    lengths_cpu = torch.tensor(lengths, dtype=torch.long, device="cpu")
+    with tqdm(total=N, desc="Predicting MIC", unit="peptide") as pbar:
+        for start in range(0, N, batch_size):
+            end = min(N, start + batch_size)
+            seq_t = torch.tensor(encoded_seq[start:end], dtype=torch.long, device=device)
+            len_t = lengths_cpu[start:end]
+
+            qsar_t = torch.zeros((end - start, 0), dtype=torch.float32, device=device)
+
+            out = model(seq_t, qsar_t, len_t).squeeze(-1).detach().cpu().numpy().astype(np.float32)
+            preds[start:end] = out
+            pbar.update(end - start)
+
+    print(f" Predictions complete for {N} peptides")
+    return preds
+
+@torch.no_grad()
+def predict_bilstm_seq_qsar(model: BiLSTM_SEQ, encoded_seq: np.ndarray, qsar:np.ndarray, lengths: np.ndarray,
+                        device: str | torch.device, batch_size: int) -> np.ndarray:
+    N = encoded_seq.shape[0]
+    preds = np.zeros((N,), dtype=np.float32)
+
+    lengths_cpu = torch.tensor(lengths, dtype=torch.long, device="cpu")
+    with tqdm(total=N, desc="Predicting MIC", unit="peptide") as pbar:
+        for start in range(0, N, batch_size):
+            end = min(N, start + batch_size)
+            seq_t = torch.tensor(encoded_seq[start:end], dtype=torch.long, device=device)
+            len_t = lengths_cpu[start:end]
+
+            qsar_t = torch.tensor(qsar[start:end], dtype=torch.float32, device=device)
+
+            out = model(seq_t, qsar_t, len_t).squeeze(-1).detach().cpu().numpy().astype(np.float32)
+            preds[start:end] = out
+            pbar.update(end - start)
+
+    print(f" Predictions complete for {N} peptides")
+    return preds
 
 def main(): 
-    p = argparse.ArgumentParser()
-    p.add_argument("--h5_file", required=True, help="Input H5 with esm_full/qsar_features/seq_lengths/sequences.")
-    p.add_argument("--ckpt_path", required=True, help="Path to saved model checkpoint (.pt).")
-    p.add_argument("--out_csv", required=True, help="Output CSV path.")
-    p.add_argument("--batch_size", type=int, default=128, help="Batch size for inference.")
-    p.add_argument("--device", default=None, help='Device override ("cpu" or "cuda"). Default auto.')
-    p.add_argument('--model', type=str, default='mlp',
-                        choices=['mlp', 'bilstm'],
-                        help="Model type: 'mlp' (mean-pooled ESM), 'bilstm' (full ESM sequence)")
-    p.add_argument('--pure_bilstm', action='store_true',
-                        help="Pure BiLSTM without QSAR features")
-    
-    args = p.parse_args()
-    
+    args = get_args()
+
     print("\n" + "="*60)
     print("PEPTIDE MIC PREDICTION PIPELINE")
     print("="*60)
 
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device: {args.device}")
+    print(f"Device: {device}")
     print(f"Model Type: {args.model}" + (" (pure)" if args.pure_bilstm else ""))
     print(f"Batch size: {args.batch_size}")
     
@@ -401,27 +556,43 @@ def main():
     
     # Build model and get predictions based on model type
     if args.model == 'bilstm':
-        with h5py.File(args.h5_file, "r") as f:
-            esm_full = f["esm_full"][:]
-            if esm_full.ndim != 3:
-                raise ValueError(f'Expected "esm_full" to have shape (N, L, D), got {esm_full.shape}')
-        esm_full_dim = int(esm_full.shape[2])
 
         if args.pure_bilstm:
             print("Building Pure BiLSTM model (no QSAR)...")
-            model = build_bilstm_pure(ckpt, esm_full_dim, device)
             esm_full, lengths = load_bilstm_pure_features(args.h5_file)
+            if esm_full.ndim != 3:
+                raise ValueError(f'Expected "esm_full" to have shape (N, L, D), got {esm_full.shape}')
+            esm_full_dim = int(esm_full.shape[2])   
+            model = build_bilstm_pure(ckpt, esm_full_dim, device)
             log_mic = predict_bilstm_pure(model, esm_full, lengths, device, args.batch_size)
         else:
             print("Building BiLSTM+QSAR model...")
-            model = build_bilstm_qsar(ckpt, esm_full_dim, qsar_dim, device)
             esm_full, qsar, lengths = load_bilstm_qsar_features(args.h5_file, ckpt)
+            if esm_full.ndim != 3:
+                raise ValueError(f'Expected "esm_full" to have shape (N, L, D), got {esm_full.shape}')
+            esm_full_dim = int(esm_full.shape[2])  
+            model = build_bilstm_qsar(ckpt, esm_full_dim, qsar_dim, device)
             log_mic = predict_bilstm_qsar(model, esm_full, qsar, lengths, device, args.batch_size)
-    
+
+    elif args.model == 'bilstm_seq': 
+        if args.pure_bilstm:
+            print("Building BiLSTM Seq Model (no QSAR)...")
+            model = build_bilstm_seq(ckpt, device)
+            sequences, lengths, aa_vocab = load_bilstm_seq_features(args.h5_file, ckpt) 
+            encoded_seq = encode_seq(sequences, aa_vocab)
+            log_mic = predict_bilstm_seq(model, encoded_seq, lengths, device, args.batch_size)
+        
+        else:
+            print("Building BiLSTM Seq+QSAR model...")
+            model = build_bilstm_seq_qsar(ckpt, qsar_dim, device)
+            sequences, lengths, aa_vocab = load_bilstm_seq_features(args.h5_file, ckpt) 
+            encoded_seq = encode_seq(sequences, aa_vocab)
+            log_mic = predict_bilstm_seq_qsar(model, encoded_seq, qsar, lengths, device, args.batch_size)
+
     elif args.model == 'mlp':
         print("Building MLP model...")
         model = build_mlp(ckpt, esm_dim, qsar_dim, device)
-        X = load_mlp_features(args.h5_file, ckpt)
+        X = load_mlp_features(esm, qsar, ckpt)
         print(f"Feature matrix shape: {X.shape}")
         log_mic = predict_mlp(model, X, device, args.batch_size)
     
