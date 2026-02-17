@@ -849,9 +849,9 @@ def main():
         model_desc = 'BiLSTM (seq, no QSAR)'
     elif args.model == 'bilstm_seq':
         model_desc = "BiLSTM (seq + QSAR)"
-    elif model_desc == 'bilstm_seq_esm' and args.pure_bilstm:
+    elif args.model == 'bilstm_seq_esm' and args.pure_bilstm:
         model_desc = "BiLSTM (seq + ESM)"
-    elif model_desc == 'bilstm_seq_esm':
+    elif args.model == 'bilstm_seq_esm':
         model_desc = "BiLSTM (seq + ESM + QSAR)"
     else:
         model_desc = "MLP"
