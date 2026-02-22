@@ -1166,6 +1166,10 @@ def main():
                 save_dict['esm_scaler_mean'] = esm_scaler.mean_
                 save_dict['esm_scaler_scale'] = esm_scaler.scale_
             
+            if args.model == 'bilstm_seq_esm' and args.pure_bilstm:
+                save_dict['esm_scaler_mean'] = esm_scaler.mean_
+                save_dict['esm_scaler_scale'] = esm_scaler.scale_
+            
             if args.model in ['bilstm_seq', 'bilstm_seq_esm']:
                 save_dict['aa_vocab'] = aa_vocab
 
