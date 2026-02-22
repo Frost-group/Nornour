@@ -231,7 +231,7 @@ def build_bilstm_pure(ckpt: dict, esm_full_dim:int, device: str | torch.device) 
 
 def build_bilstm_seq(ckpt: dict, device: str | torch.device) -> BiLSTM_SEQ:
     args = ckpt["args"]
-    required = ["embed_dim" "lstm_hidden", "lstm_layers", "mlp_hidden", "dropout", "activation"]
+    required = ["embed_dim", "lstm_hidden", "lstm_layers", "mlp_hidden", "dropout", "activation"]
     missing = [k for k in required if k not in args]
     if missing:
         raise KeyError(f"Checkpoint args missing keys required for BiLSTM_PURE: {missing}")
@@ -278,7 +278,7 @@ def build_bilstm_seq(ckpt: dict, device: str | torch.device) -> BiLSTM_SEQ:
 
 def build_bilstm_seq_qsar(ckpt: dict, qsar_dim: int, device: str | torch.device) -> BiLSTM_SEQ:
     args = ckpt["args"]
-    required = ["embed_dim" "lstm_hidden", "lstm_layers", "mlp_hidden", "dropout", "activation"]
+    required = ["embed_dim", "lstm_hidden", "lstm_layers", "mlp_hidden", "dropout", "activation"]
     missing = [k for k in required if k not in args]
     if missing:
         raise KeyError(f"Checkpoint args missing keys required for BiLSTM_QSAR: {missing}")
@@ -325,7 +325,7 @@ def build_bilstm_seq_qsar(ckpt: dict, qsar_dim: int, device: str | torch.device)
 
 def build_bilstm_seq_esm(ckpt: dict, input_dim: int, device: str | torch.device) -> BiLSTM_SEQ_ESM:
     args = ckpt["args"]
-    required = ["embed_dim" "lstm_hidden", "lstm_layers", "mlp_hidden", "dropout", "activation"]
+    required = ["embed_dim", "lstm_hidden", "lstm_layers", "mlp_hidden", "dropout", "activation"]
     missing = [k for k in required if k not in args]
     if missing:
         raise KeyError(f"Checkpoint args missing keys required for BiLSTM_SEQ_ESM: {missing}")
