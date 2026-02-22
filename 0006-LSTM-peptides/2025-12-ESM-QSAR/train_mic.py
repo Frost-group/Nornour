@@ -70,7 +70,7 @@ def get_args():
                         help="Sequence embedding dimension for BILSTM_seq")
     
     # Training
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=40,
                         help="Training epochs")
     parser.add_argument('--batch_size', type=int, default=64,
                         help="Batch size")
@@ -1224,16 +1224,16 @@ def main():
     if args.save_data: 
         os.makedirs("datasets", exist_ok=True)
 
-        train_seqs = sequences[train_idx]
+        # train_seqs = sequences[train_idx]
         # val_seqs = sequences[val_idx]
-        # test_seqs = sequences[test_idx]
+        test_seqs = sequences[test_idx]
 
         
-        df_train = pd.DataFrame({
-            "Sequence":train_seqs,
-            "log_mic_pred": train_preds,
-            "log_mic": train_targets
-        })
+        # df_train = pd.DataFrame({
+        #     "Sequence":train_seqs,
+        #     "log_mic_pred": train_preds,
+        #     "log_mic": train_targets
+        # })
 
         # df_val = pd.DataFrame({
         #     "Sequence":val_seqs,
@@ -1241,16 +1241,25 @@ def main():
         #     "log_mic": val_targets
         # })
 
-        # df_test = pd.DataFrame({
-        #     "Sequence":test_seqs,
-        #     "log_mic_pred": test_preds,
-        #     "log_mic": test_targets
-        # })
-        df_train.to_csv(f"model_comparisons/ecoli_test_pred/{args.model}_train.csv", index=False)
-        # df_val.to_csv(f"{args.model}_val.csv", index=False)
-        # df_test.to_csv(f"{args.model}_test.csv", index=False)
+        df_test = pd.DataFrame({
+            "Sequence":test_seqs,
+            "log_mic_pred": test_preds,
+            "log_mic": test_targets
+        })
+        # df_train.to_csv(f"model_comparisons/ecoli_test_pred/{args.model}_train.csv", index=False)
+        # df_val.to_csv(f"model_comparisons/ecoli_test_pred/{args.model}_val.csv", index=False)
+        if args.pure_bilstm:
+            model_suffix = f"{args.model}_qsar"
+        else: 
+            model_suffix = args.model
+        
+        df_test.to_csv(f"model_comparisons/ecoli_test_pred/{model_suffix}_test.csv", index=False)
 
-        print(f"\nSaved --> test to model_comparisons/ecoli_test_pred/{args.model}_train.csv")
+        print(f"\nSaved --> test to model_comparisons/ecoli_test_pred/{model_suffix}_test.csv")
+        
+        # print(f"\nSaved --> test to model_comparisons/ecoli_test_pred/{args.model}_train.csv")
+        # print(f"\nSaved --> test to model_comparisons/ecoli_test_pred/{args.model}_val.csv")
+        print(f"\nSaved --> test to model_comparisons/ecoli_test_pred/{args.model}_test.csv")
         
     print("\nDone!")
 
