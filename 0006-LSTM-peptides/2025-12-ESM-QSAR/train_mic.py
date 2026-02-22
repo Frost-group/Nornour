@@ -1249,9 +1249,9 @@ def main():
         # df_train.to_csv(f"model_comparisons/ecoli_test_pred/{args.model}_train.csv", index=False)
         # df_val.to_csv(f"model_comparisons/ecoli_test_pred/{args.model}_val.csv", index=False)
         if args.pure_bilstm:
-            model_suffix = f"{args.model}_qsar"
-        else: 
             model_suffix = args.model
+        else: 
+            model_suffix = f"{args.model}_qsar"
         
         df_test.to_csv(f"model_comparisons/ecoli_test_pred/{model_suffix}_test.csv", index=False)
 
