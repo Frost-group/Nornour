@@ -1226,10 +1226,10 @@ def main():
     
     # 9. Save input sequences | predictions | true values
     if args.save_data: 
-        os.makedirs("datasets", exist_ok=True)
+        os.makedirs("model_comparisons/ecoli_test_pred_77", exist_ok=True)
 
         # train_seqs = sequences[train_idx]
-        # val_seqs = sequences[val_idx]
+        val_seqs = sequences[val_idx]
         test_seqs = sequences[test_idx]
 
         
@@ -1239,31 +1239,37 @@ def main():
         #     "log_mic": train_targets
         # })
 
-        # df_val = pd.DataFrame({
-        #     "Sequence":val_seqs,
-        #     "log_mic_pred": val_preds,
-        #     "log_mic": val_targets
-        # })
+        df_val = pd.DataFrame({
+            "Sequence":val_seqs,
+            "log_mic_pred": val_preds,
+            "log_mic": val_targets
+        })
 
         df_test = pd.DataFrame({
             "Sequence":test_seqs,
             "log_mic_pred": test_preds,
             "log_mic": test_targets
         })
-        # df_train.to_csv(f"model_comparisons/ecoli_test_pred/{args.model}_train.csv", index=False)
-        # df_val.to_csv(f"model_comparisons/ecoli_test_pred/{args.model}_val.csv", index=False)
-        if args.pure_bilstm:
+        if args.model == 'mlp':
+            if args.feature_type == 'both': 
+                model_suffix = f"{args.model}_both"
+            elif args.feature_type == 'esm': 
+                model_suffix = f"{args.model}_esm"
+            elif args.feature_type == 'qsar': 
+                model_suffix = f"{args.model}_qsar"
+            
+        elif args.pure_bilstm:
             model_suffix = args.model
         else: 
             model_suffix = f"{args.model}_qsar"
         
-        df_test.to_csv(f"model_comparisons/ecoli_test_pred/{model_suffix}_test.csv", index=False)
-
-        print(f"\nSaved --> test to model_comparisons/ecoli_test_pred/{model_suffix}_test.csv")
+        df_test.to_csv(f"model_comparisons/ecoli_test_pred_77/{model_suffix}_test.csv", index=False)
+        df_val.to_csv(f"model_comparisons/ecoli_test_pred_77/{model_suffix}_val.csv", index=False)
         
-        # print(f"\nSaved --> test to model_comparisons/ecoli_test_pred/{args.model}_train.csv")
-        # print(f"\nSaved --> test to model_comparisons/ecoli_test_pred/{args.model}_val.csv")
-        print(f"\nSaved --> test to model_comparisons/ecoli_test_pred/{args.model}_test.csv")
+        print(f"\nSaved --> test to model_comparisons/ecoli_test_pred77/{model_suffix}_test.csv")
+        print(f"\nSaved --> val to model_comparisons/ecoli_test_pred77/{model_suffix}_val.csv")
+
+
         
     print("\nDone!")
 
