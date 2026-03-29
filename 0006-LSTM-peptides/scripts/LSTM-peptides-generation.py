@@ -406,6 +406,7 @@ def main():
     while os.path.exists(os.path.join(gen_base_dir, f"generated_peptides_{count + 1}")):
         count += 1
     gen_dir = os.path.join(gen_base_dir, f"generated_peptides_{count}")
+    os.makedirs(gen_dir, exist_ok=True)
 
     if args.output_path == 'd':
         gen_path = os.path.join(gen_dir, "gen_peptides.fasta")
